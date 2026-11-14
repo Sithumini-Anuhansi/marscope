@@ -23,6 +23,7 @@ app.include_router(risk.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
 app.include_router(crew.router, prefix="/api/v1")
 
+
 @app.get("/health", include_in_schema=False)
 def legacy_health():
     """Compatibility health endpoint for older frontend builds."""

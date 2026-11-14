@@ -21,8 +21,8 @@ export const CATEGORIES: { id: ObservationCategory; label: string; color: string
 const headers = (actorId: string, role: string, token: string) => ({ 'X-Actor-ID': actorId, 'X-Actor-Role': role, 'X-Actor-Token': token, 'Content-Type': 'application/json' })
 const base = (missionId: string) => `${API_BASE_URL}/api/v1/missions/${missionId}/observations`
 
-export async function getObservations(missionId: string, filters: { category?: string; astronaut_id?: string } = {}): Promise<Observation[]> {
-  const url = new URL(base(missionId)); Object.entries(filters).forEach(([key, value]) => value && url.searchParams.set(key, value))
+export async function getObservations(missionId: string, filters: { category?: string; astronaut_id?: string; min_latitude?: number; max_latitude?: number; min_longitude?: number; max_longitude?: number } = {}): Promise<Observation[]> {
+  const url = new URL(base(missionId)); Object.entries(filters).forEach(([key, value]) => value !== undefined && url.searchParams.set(key, String(value)))
   const response = await fetch(url); if (!response.ok) throw new Error(`Observation service returned HTTP ${response.status}`)
   return response.json() as Promise<Observation[]>
 }

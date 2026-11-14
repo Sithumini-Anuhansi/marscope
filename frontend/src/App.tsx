@@ -12,10 +12,14 @@ import { RiskAssessmentPage } from './pages/RiskAssessmentPage'
 import { RoutePlanningPage } from './pages/RoutePlanningPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SurvivalAssessmentPage } from './pages/SurvivalAssessmentPage'
+import { WhereAmIPage } from './pages/WhereAmIPage'
 
 // Cesium is heavy, so the Mars Explorer route is loaded on demand.
 const MarsExplorerPage = lazy(() =>
   import('./pages/MarsExplorerPage').then((module) => ({ default: module.MarsExplorerPage })),
+)
+const SolarSystemExplorerPage = lazy(() =>
+  import('./pages/SolarSystemExplorerPage').then((module) => ({ default: module.SolarSystemExplorerPage })),
 )
 
 export default function App() {
@@ -23,12 +27,21 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>
-          <Route index element={<OverviewPage />} />
+          <Route index element={<WhereAmIPage />} />
+          <Route path="dashboard" element={<OverviewPage />} />
           <Route
             path="explorer"
             element={
               <Suspense fallback={<LoadingPanel label="Loading Mars Explorer…" />}>
                 <MarsExplorerPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="solar-system"
+            element={
+              <Suspense fallback={<LoadingPanel label="Loading Solar System Explorer…" />}>
+                <SolarSystemExplorerPage />
               </Suspense>
             }
           />

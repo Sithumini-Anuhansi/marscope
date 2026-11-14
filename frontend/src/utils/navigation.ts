@@ -5,6 +5,7 @@ import {
   FileText,
   House,
   Map,
+  Orbit,
   Route,
   Settings,
   ShieldExclamationPoint,
@@ -21,10 +22,22 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    label: 'Overview',
+    label: 'Where Am I?',
     path: '/',
+    description: 'Identify a Mars location and review nearby mission information.',
+    icon: Compass,
+  },
+  {
+    label: 'Mission Dashboard',
+    path: '/dashboard',
     description: 'Mission status, environment summary, crew, and activity at a glance.',
     icon: House,
+  },
+  {
+    label: 'Solar System Explorer',
+    path: '/solar-system',
+    description: 'Explore the Solar System and Mars-centered Phobos and Deimos ephemerides.',
+    icon: Orbit,
   },
   {
     label: 'Mars Explorer',
