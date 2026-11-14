@@ -11,8 +11,9 @@ export function MarsExplorerPage() {
         <h1 className="mt-1 text-2xl font-semibold text-sand md:text-3xl">Interactive Mars globe</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted">
           A 3D globe on Cesium&apos;s Mars ellipsoid. Surface imagery comes from NASA Mars Trek when
-          the tile service is reachable; otherwise a labeled temporary globe is shown. Operational
-          layers (hazards, crew, routes) are not connected yet and display no data.
+          the tile service is reachable; otherwise a labeled temporary globe is shown. Enable
+          Terrain assessment (MOLA) and select a point to query available metrics. Results remain
+          unclassified; crew, route, and environmental hazard layers are unavailable.
         </p>
       </div>
 

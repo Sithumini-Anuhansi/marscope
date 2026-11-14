@@ -1,9 +1,11 @@
 import {
   Cartesian2,
+  Cartesian3,
   Cartographic,
   Color,
   Ellipsoid,
   GeographicProjection,
+  LabelStyle,
   ScreenSpaceEventType,
   SkyBox,
   defined,
@@ -17,6 +19,7 @@ import {
   CameraFlyTo,
   Globe,
   ImageryLayer,
+  Entity,
   Scene,
   ScreenSpaceCameraController,
   ScreenSpaceEvent,
@@ -36,12 +39,16 @@ import type {
   ImageryRuntimeStatus,
   PointerCoordinates,
 } from '../../types/map'
+import type { HazardLocationResponse } from '../../types/hazard'
+import { getHazardAssessmentAtLocation } from '../../services/hazardService'
 import {
   MARS_ELLIPSOID,
   MARS_EQUATORIAL_RADIUS_METERS,
   cartographicToLonLat,
+  geodeticToPlanetocentricLatitude,
   installMarsEllipsoid,
   marsHomeDestination,
+  planetocentricToGeodeticLatitude,
 } from '../../utils/marsCoordinates'
 import { CoordinateDisplay, type CoordinateReadoutHandle } from './CoordinateDisplay'
 import { MapControls } from './MapControls'
@@ -103,6 +110,12 @@ export function MarsGlobe() {
   const [layersOpen, setLayersOpen] = useState(isLargeScreen)
   const [legendOpen, setLegendOpen] = useState(isLargeScreen)
   const [viewer, setViewer] = useState<CesiumViewer | null>(null)
+  const [hazardAssessmentEnabled, setHazardAssessmentEnabled] = useState(false)
+  const [assessment, setAssessment] = useState<HazardLocationResponse | null>(null)
+  const [assessmentLoading, setAssessmentLoading] = useState(false)
+  const [assessmentError, setAssessmentError] = useState<string | null>(null)
+  const [assessedCell, setAssessedCell] = useState<{ longitudeDeg: number; latitudeDeg: number } | null>(null)
+  const assessmentRequest = useRef(0)
   const readout = useRef<CoordinateReadoutHandle>(null)
   const { providers, failed } = useImageryProviders()
 
@@ -179,6 +192,57 @@ export function MarsGlobe() {
     [viewer],
   )
 
+  const handleToggleHazardAssessment = useCallback((visible: boolean) => {
+    assessmentRequest.current += 1
+    setHazardAssessmentEnabled(visible)
+    setAssessment(null)
+    setAssessmentError(null)
+    setAssessmentLoading(false)
+    setAssessedCell(null)
+  }, [])
+
+  const handleMapClick = useCallback(
+    (event: PointerEventLike) => {
+      handlePointer(event)
+      if (!('position' in event)) return
+      if (!hazardAssessmentEnabled) return
+      const clicked = pickMars(viewer, event.position)
+      if (!clicked) {
+        setAssessmentError('Select a point on the visible Mars surface.')
+        setAssessment(null)
+        setAssessedCell(null)
+        return
+      }
+
+      const requestId = ++assessmentRequest.current
+      const planetocentricLatitude = geodeticToPlanetocentricLatitude(clicked.latitudeDeg)
+      setAssessmentLoading(true)
+      setAssessmentError(null)
+      setAssessment(null)
+      setAssessedCell(null)
+
+      void getHazardAssessmentAtLocation(planetocentricLatitude, clicked.longitudeDeg)
+        .then((result) => {
+          if (requestId !== assessmentRequest.current) return
+          setAssessment(result)
+          if (result.sampled_cell) {
+            setAssessedCell({
+              longitudeDeg: result.sampled_cell.longitude_deg,
+              latitudeDeg: planetocentricToGeodeticLatitude(result.sampled_cell.latitude_deg),
+            })
+          }
+        })
+        .catch((error: unknown) => {
+          if (requestId !== assessmentRequest.current) return
+          setAssessmentError(error instanceof Error ? error.message : 'Terrain assessment request failed.')
+        })
+        .finally(() => {
+          if (requestId === assessmentRequest.current) setAssessmentLoading(false)
+        })
+    },
+    [handlePointer, hazardAssessmentEnabled, viewer],
+  )
+
   const usingMarsEllipsoid = viewer
     ? viewer.scene.ellipsoid.equals(Ellipsoid.MARS)
     : Ellipsoid.default.equals(Ellipsoid.MARS)
@@ -244,6 +308,29 @@ export function MarsGlobe() {
               <ImageryLayer key={id} imageryProvider={provider} show={imageryVisibility[id]} />
             ) : null
           })}
+          {assessedCell ? (
+            <Entity
+              name="Terrain assessment query cell"
+              position={Cartesian3.fromDegrees(assessedCell.longitudeDeg, assessedCell.latitudeDeg, 0, MARS_ELLIPSOID)}
+              point={{
+                pixelSize: 13,
+                color: Color.fromCssColorString('#c9a24a'),
+                outlineColor: Color.fromCssColorString('#070605'),
+                outlineWidth: 2,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              }}
+              label={{
+                text: 'QUERY CELL · NOT A HAZARD',
+                font: '10px IBM Plex Mono',
+                fillColor: Color.fromCssColorString('#e8e2d6'),
+                outlineColor: Color.fromCssColorString('#070605'),
+                outlineWidth: 3,
+                style: LabelStyle.FILL_AND_OUTLINE,
+                pixelOffset: new Cartesian2(0, -22),
+                disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              }}
+            />
+          ) : null}
           <CameraFlyTo
             key={homeNonce}
             destination={HOME_DESTINATION}
@@ -252,7 +339,7 @@ export function MarsGlobe() {
           />
           <ScreenSpaceEventHandler useDefault>
             <ScreenSpaceEvent type={ScreenSpaceEventType.MOUSE_MOVE} action={handlePointer} />
-            <ScreenSpaceEvent type={ScreenSpaceEventType.LEFT_CLICK} action={handlePointer} />
+            <ScreenSpaceEvent type={ScreenSpaceEventType.LEFT_CLICK} action={handleMapClick} />
           </ScreenSpaceEventHandler>
           <ViewerBridge onReady={handleViewerReady} readout={readout} />
         </Viewer>
@@ -274,7 +361,21 @@ export function MarsGlobe() {
           <div className="flex items-start justify-between gap-3">
             <div className="pointer-events-auto min-w-0">
               {layersOpen ? (
-                <MapLayers imageryVisibility={imageryVisibility} onToggleImagery={handleToggleImagery} />
+                <MapLayers
+                  imageryVisibility={imageryVisibility}
+                  onToggleImagery={handleToggleImagery}
+                  hazardAssessmentEnabled={hazardAssessmentEnabled}
+                  onToggleHazardAssessment={handleToggleHazardAssessment}
+                />
+              ) : null}
+              {hazardAssessmentEnabled ? (
+                <div className="mt-2 pointer-events-auto">
+                  <TerrainAssessmentPanel
+                    assessment={assessment}
+                    loading={assessmentLoading}
+                    error={assessmentError}
+                  />
+                </div>
               ) : null}
             </div>
             <div className="pointer-events-auto ml-auto flex shrink-0 flex-col items-end gap-2">
@@ -341,6 +442,95 @@ const STATUS_MESSAGES: Record<ImageryRuntimeStatus, string | null> = {
   error:
     'Imagery could not be set up. Showing a temporary Mars ellipsoid globe, not a scientific mosaic.',
   'ellipsoid-only': 'All imagery layers are off. The visible body is the Cesium Mars ellipsoid only.',
+}
+
+function TerrainAssessmentPanel({
+  assessment,
+  loading,
+  error,
+}: {
+  assessment: HazardLocationResponse | null
+  loading: boolean
+  error: string | null
+}) {
+  const title: Record<string, string> = {
+    terrain_slope: 'Slope',
+    surface_roughness: 'Surface roughness',
+    elevation_variation: 'Local elevation variation',
+    crater_depression: 'Crater / depression',
+    temperature: 'Temperature',
+    wind: 'Wind',
+    dust: 'Dust',
+    radiation: 'Radiation',
+  }
+  const source = assessment?.assessments.find((item) => item.source_dataset)?.source_dataset
+
+  return (
+    <aside
+      className="max-h-[min(42vh,22rem)] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-void/95 p-3 shadow-xl backdrop-blur-md"
+      aria-label="Terrain assessment"
+      aria-live="polite"
+      aria-busy={loading}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.2em] text-gold uppercase">MOLA · point query</p>
+          <h3 className="mt-1 text-xs font-semibold text-sand">Terrain assessment</h3>
+        </div>
+        <span className="rounded-full border border-gold/30 px-2 py-1 font-mono text-[9px] text-gold uppercase">
+          {loading ? 'Loading' : assessment?.assessment_status ?? (error ? 'Unavailable' : 'Ready')}
+        </span>
+      </div>
+
+      <p className="mt-2 text-[10px] leading-snug text-muted">
+        Click the globe to query a cell. The gold marker identifies the queried cell, not a hazard.
+      </p>
+
+      {loading ? (
+        <p className="mt-3 flex items-center gap-2 text-[11px] text-sand" role="status">
+          <LoaderCircle className="h-3.5 w-3.5 animate-spin text-gold" aria-hidden="true" />
+          Requesting terrain metrics…
+        </p>
+      ) : null}
+      {error ? <p className="mt-3 text-[11px] text-mars">{error}. Confirm the API is running.</p> : null}
+      {!assessment && !loading && !error ? (
+        <p className="mt-3 rounded-lg border border-line bg-panel/70 p-2 text-[11px] text-sand/80">
+          Waiting for a Mars surface selection.
+        </p>
+      ) : null}
+
+      {assessment ? (
+        <>
+          <ul className="mt-3 divide-y divide-line">
+            {assessment.assessments.map((item) => (
+              <li key={item.assessment_id ?? item.category} className="py-2 first:pt-0 last:pb-0">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] text-sand">{title[item.category] ?? item.category}</span>
+                  <span className="font-mono text-[10px] text-gold">
+                    {item.measurement
+                      ? `${item.measurement.value.toFixed(2)} ${item.measurement.units}`
+                      : 'Unavailable'}
+                  </span>
+                </div>
+                <p className="mt-1 text-[9px] leading-snug text-muted">
+                  {item.observation_kind === 'derived'
+                    ? `Derived metric · ${item.severity}`
+                    : item.classification?.classification_status ?? 'Data unavailable'}
+                </p>
+              </li>
+            ))}
+          </ul>
+          {source ? (
+            <p className="mt-3 border-t border-line pt-2 text-[9px] leading-snug text-muted">
+              {source.product_id} · {source.resolution_km_per_cell} km/cell · source period{' '}
+              {source.source_period_utc.map((date) => date.slice(0, 10)).join(' – ')}.
+            </p>
+          ) : null}
+          <p className="mt-2 text-[10px] leading-snug text-muted">{assessment.message}</p>
+        </>
+      ) : null}
+    </aside>
+  )
 }
 
 function PanelToggle({

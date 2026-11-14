@@ -5,6 +5,8 @@ import type { ImageryLayerId, MapLayerCategory } from '../../types/map'
 interface MapLayersProps {
   imageryVisibility: Record<ImageryLayerId, boolean>
   onToggleImagery: (id: ImageryLayerId, visible: boolean) => void
+  hazardAssessmentEnabled: boolean
+  onToggleHazardAssessment: (visible: boolean) => void
 }
 
 const CATEGORY_LABEL: Record<MapLayerCategory, string> = {
@@ -13,7 +15,7 @@ const CATEGORY_LABEL: Record<MapLayerCategory, string> = {
   operations: 'Operations',
 }
 
-export function MapLayers({ imageryVisibility, onToggleImagery }: MapLayersProps) {
+export function MapLayers({ imageryVisibility, onToggleImagery, hazardAssessmentEnabled, onToggleHazardAssessment }: MapLayersProps) {
   const categories: MapLayerCategory[] = ['imagery', 'environment', 'operations']
 
   return (
@@ -31,7 +33,11 @@ export function MapLayers({ imageryVisibility, onToggleImagery }: MapLayersProps
           <ul className="space-y-1">
             {MAP_LAYER_DEFINITIONS.filter((layer) => layer.category === category).map((layer) => {
               const live = layer.availability === 'live'
-              const checked = live ? imageryVisibility[layer.id as ImageryLayerId] : false
+              const checked = !live
+                ? false
+                : layer.id === 'hazards'
+                  ? hazardAssessmentEnabled
+                  : imageryVisibility[layer.id as ImageryLayerId]
 
               return (
                 <li key={layer.id}>
@@ -46,7 +52,9 @@ export function MapLayers({ imageryVisibility, onToggleImagery }: MapLayersProps
                       checked={checked}
                       disabled={!live}
                       onChange={(event) => {
-                        if (live) onToggleImagery(layer.id as ImageryLayerId, event.target.checked)
+                        if (!live) return
+                        if (layer.id === 'hazards') onToggleHazardAssessment(event.target.checked)
+                        else onToggleImagery(layer.id as ImageryLayerId, event.target.checked)
                       }}
                     />
                     <span className="min-w-0">

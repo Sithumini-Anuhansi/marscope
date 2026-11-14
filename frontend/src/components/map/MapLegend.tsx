@@ -6,29 +6,24 @@ interface LegendItem {
 
 const LEGEND: LegendItem[] = [
   {
+    colorClass: 'bg-gold',
+    label: 'Terrain assessment point',
+    note: 'Marks only the selected query cell; it is not a hazard detection.',
+  },
+  {
     colorClass: 'bg-mars',
-    label: 'High-risk locations',
-    note: 'Reserved. No hazard detections are plotted yet.',
-  },
-  {
-    colorClass: 'bg-ember',
-    label: 'Moderate-risk locations',
-    note: 'Reserved for future severity classes.',
-  },
-  {
-    colorClass: 'bg-ok',
-    label: 'Relatively safe locations',
-    note: 'Reserved. No ranked sites are shown.',
+    label: 'Severity classification',
+    note: 'Unclassified until a documented policy and supporting inputs are available.',
   },
   {
     colorClass: 'bg-sky-400',
-    label: 'Water or ice observations',
-    note: 'Shown only when a supporting dataset is connected.',
+    label: 'Environmental data',
+    note: 'Temperature, wind, dust, and radiation layers are unavailable.',
   },
   {
     colorClass: 'bg-gold',
-    label: 'Astronaut markers',
-    note: 'Reserved. Crew positions are not invented.',
+    label: 'No detected hazards',
+    note: 'The current API returns terrain metrics, not classified hazard locations.',
   },
 ]
 
@@ -39,7 +34,7 @@ export function MapLegend() {
       aria-label="Map legend"
     >
       <p className="mb-2 font-mono text-[10px] tracking-[0.22em] text-gold uppercase">
-        Legend · future overlays
+        Legend · terrain assessment
       </p>
       <ul className="space-y-1.5">
         {LEGEND.map((item) => (

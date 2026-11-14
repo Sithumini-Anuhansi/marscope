@@ -10,7 +10,7 @@ Run the download explicitly from `backend/` after installing requirements:
 python -m app.services.mola_ingestion --raw-dir ../data/raw/mola
 ```
 
-Raw files are retained unchanged. A JSON manifest records source URLs, hashes, source period, conventions, and structural validation. The routine checks image length and parses the XML label, but does not parse all PDS metadata, verify an archive-provided checksum, quality-assess elevations, or convert to GeoTIFF. It does not run at API startup. If a download fails, staged temporary files are discarded; an earlier completed copy is retained.
+Raw files are retained unchanged. A JSON manifest records source URLs, hashes, source period, conventions, and structural validation. The downloader checks image length and parses the XML label, but does not verify an archive-provided checksum or quality-assess elevations. It does not run at API startup. If a download fails, staged temporary files are discarded; an earlier completed copy is retained. See [geospatial-processing.md](geospatial-processing.md) for label-driven GeoTIFF processing.
 
 The grid reports median topography per 0.25° bin relative to the MOLA areoid; the label says empty bins may be interpolated. Do not treat this old global dataset as current environmental conditions. The PDS4 product label gives a geometry span from 1997-09-15 through 2001-06-30. It specifies IAU2000_MARS planetocentric latitude, positive-east longitude, and an equirectangular projection with central meridian 180°. The ingest manifest copies these values from the product label.
 

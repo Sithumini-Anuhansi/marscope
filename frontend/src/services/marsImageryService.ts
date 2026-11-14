@@ -154,9 +154,9 @@ export const MAP_LAYER_DEFINITIONS: MapLayerDefinition[] = [
   {
     id: 'hazards',
     category: 'operations',
-    label: 'Hazard locations',
-    description: 'AI hazard detection is not implemented. No invented hazard points.',
-    availability: 'coming-soon',
+    label: 'Terrain assessment (MOLA)',
+    description: 'Click the globe to query derived terrain metrics. No severity classification is configured.',
+    availability: 'live',
     defaultVisible: false,
   },
   {

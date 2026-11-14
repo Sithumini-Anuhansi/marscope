@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import datasets, health, mars
+from app.api.v1.endpoints import datasets, hazards, health, mars, risk
 from app.core.config import settings
 
 app = FastAPI(
@@ -19,6 +19,8 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(mars.router, prefix="/api/v1")
 app.include_router(datasets.router, prefix="/api/v1")
+app.include_router(hazards.router, prefix="/api/v1")
+app.include_router(risk.router, prefix="/api/v1")
 
 @app.get("/health", include_in_schema=False)
 def legacy_health():

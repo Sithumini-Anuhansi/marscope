@@ -60,6 +60,22 @@ export function clampLatitudeDegrees(latitudeDeg: number): number {
   return Math.min(90, Math.max(-90, latitudeDeg))
 }
 
+/** Convert Cesium geodetic latitude to the planetocentric latitude expected by the MOLA API. */
+export function geodeticToPlanetocentricLatitude(latitudeDeg: number): number {
+  const latitude = degreesToRadians(clampLatitudeDegrees(latitudeDeg))
+  const a2 = MARS_ELLIPSOID.maximumRadius ** 2
+  const b2 = MARS_ELLIPSOID.minimumRadius ** 2
+  return radiansToDegrees(Math.atan2(b2 * Math.sin(latitude), a2 * Math.cos(latitude)))
+}
+
+/** Convert a PDS planetocentric latitude to the geodetic latitude used by Cesium's Mars ellipsoid. */
+export function planetocentricToGeodeticLatitude(latitudeDeg: number): number {
+  const latitude = degreesToRadians(clampLatitudeDegrees(latitudeDeg))
+  const a2 = MARS_ELLIPSOID.maximumRadius ** 2
+  const b2 = MARS_ELLIPSOID.minimumRadius ** 2
+  return radiansToDegrees(Math.atan2(a2 * Math.sin(latitude), b2 * Math.cos(latitude)))
+}
+
 export function lonLatToCartesian(
   longitudeDeg: number,
   latitudeDeg: number,
