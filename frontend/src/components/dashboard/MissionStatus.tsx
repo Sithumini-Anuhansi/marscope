@@ -8,7 +8,7 @@ interface MissionStatusProps {
 
 export function MissionStatus({ mission }: MissionStatusProps) {
   return (
-    <DashboardCard title="Mission status" eyebrow="Command">
+    <DashboardCard title="Mission status" eyebrow="Sample mission data">
       <div className="flex flex-wrap items-center gap-3">
         <StatusBadge status={mission.status} />
         <span className="font-mono text-xs text-muted">{mission.code}</span>

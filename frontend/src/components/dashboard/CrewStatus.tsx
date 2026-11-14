@@ -17,7 +17,7 @@ export function CrewStatus({ crew }: CrewStatusProps) {
   return (
     <DashboardCard
       title="Active crew members"
-      eyebrow={`${crew.length} on roster`}
+      eyebrow={`Sample roster · ${crew.length} crew`}
       action={<span className="font-mono text-2xl text-sand">{crew.length}</span>}
     >
       <ul className="space-y-3">

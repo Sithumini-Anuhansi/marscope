@@ -7,7 +7,7 @@ interface RecentObservationsProps {
 
 export function RecentObservations({ observations }: RecentObservationsProps) {
   return (
-    <DashboardCard title="Recent mission observations" eyebrow="Crew notes">
+    <DashboardCard title="Recent mission observations" eyebrow="Sample crew notes">
       <ul className="space-y-3">
         {observations.map((observation) => (
           <li key={observation.id} className="rounded-xl border border-line bg-charcoal/50 p-3">

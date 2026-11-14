@@ -34,7 +34,12 @@ function SimulatedMarsScene({
   }
 
   return (
-    <div className="absolute inset-0 origin-center will-change-transform" style={sceneStyle}>
+    <div
+      className="absolute inset-0 origin-center will-change-transform"
+      style={sceneStyle}
+      role="img"
+      aria-label="Simulated Mars preview with sample hazard, crew, and waypoint markers. Not a real geographic map."
+    >
       <div
         className="absolute inset-0"
         style={{
@@ -99,11 +104,7 @@ export function MarsMapPreview({ markers }: MarsMapPreviewProps) {
         </p>
       </header>
 
-      <div
-        className="relative min-h-[260px] flex-1 overflow-hidden bg-[#140c0a] sm:min-h-[340px]"
-        role="img"
-        aria-label="Simulated Mars preview with sample hazard, crew, and waypoint markers. Not a real geographic map."
-      >
+      <div className="relative min-h-[260px] flex-1 overflow-hidden bg-[#140c0a] sm:min-h-[340px]">
         <SimulatedMarsScene markers={markers} scale={previewScale} />
 
         <div className="absolute top-3 left-3 rounded-lg border border-line bg-void/75 px-3 py-2 backdrop-blur-sm">
@@ -140,7 +141,10 @@ export function MarsMapPreview({ markers }: MarsMapPreviewProps) {
           </button>
         </div>
 
-        <aside className="absolute right-3 bottom-3 left-3 rounded-lg border border-line bg-void/80 px-3 py-2 text-[11px] sm:right-auto sm:max-w-[220px]">
+        <aside
+          className="absolute right-3 bottom-3 left-3 rounded-lg border border-line bg-void/80 px-3 py-2 text-[11px] sm:right-auto sm:max-w-[220px]"
+          aria-label="Map legend"
+        >
           <p className="mb-1 font-mono tracking-widest text-gold uppercase">Legend · sample markers</p>
           <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sand/90 sm:block sm:space-y-1">
             <li className="flex items-center gap-2">

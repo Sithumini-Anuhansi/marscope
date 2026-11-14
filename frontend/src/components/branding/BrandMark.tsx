@@ -13,7 +13,7 @@ export function BrandMark({ compact = true }: BrandMarkProps) {
           alt="MARSCOPE"
           className={
             compact
-              ? 'block h-[4.75rem] w-full object-cover object-[center_58%]'
+              ? 'block h-32 w-full object-cover object-[center_58%]'
               : 'mx-auto block h-28 w-auto max-w-full object-contain object-center'
           }
         />

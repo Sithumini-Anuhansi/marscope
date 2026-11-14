@@ -28,14 +28,14 @@ export function Topbar({ menuOpen, onMenuClick }: TopbarProps) {
         </button>
         <div className="min-w-0">
           <p className="font-mono text-[10px] tracking-[0.2em] text-gold uppercase">
-            Current mission
+            Current mission · sample data
           </p>
           <p className="truncate text-sm font-medium text-sand md:text-base">{mission.name}</p>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <StatusBadge status={mission.status} compact />
+        <StatusBadge status={mission.status} compact sample />
 
         <div
           className="flex items-center gap-2 rounded-full border border-line bg-panel px-2 py-1.5 text-[11px] text-muted sm:px-3"
@@ -64,7 +64,7 @@ export function Topbar({ menuOpen, onMenuClick }: TopbarProps) {
           </span>
           <div className="hidden leading-tight sm:block">
             <p className="text-xs font-medium text-sand">Ops Controller</p>
-            <p className="font-mono text-[10px] text-muted">ANORA / Earth</p>
+            <p className="font-mono text-[10px] text-muted">Sample profile</p>
           </div>
         </div>
       </div>

@@ -12,8 +12,8 @@ export function Sidebar({ open, onNavigate }: SidebarProps) {
   return (
     <aside
       id="app-sidebar"
-      className={`fixed inset-y-0 left-0 z-40 flex w-[min(18rem,calc(100vw-1.5rem))] flex-col border-r border-line bg-charcoal/95 backdrop-blur-md transition-transform duration-200 lg:static lg:w-64 lg:translate-x-0 lg:pointer-events-auto ${
-        open ? 'translate-x-0' : 'pointer-events-none -translate-x-full'
+      className={`fixed inset-y-0 left-0 z-40 flex w-[min(18rem,calc(100vw-1.5rem))] flex-col border-r border-line bg-charcoal/95 backdrop-blur-md transition-[transform,visibility] duration-200 lg:static lg:w-64 lg:translate-x-0 ${
+        open ? 'translate-x-0' : '-translate-x-full max-lg:invisible'
       }`}
       aria-label="Primary"
     >
