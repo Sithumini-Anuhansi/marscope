@@ -29,7 +29,7 @@ export function isHealthyResponse(data: unknown): data is HealthCheckResponse {
 
 export async function getBackendHealth(signal?: AbortSignal): Promise<HealthCheckResponse> {
   try {
-    const { data, status } = await apiClient.get<unknown>('/health', {
+    const { data, status } = await apiClient.get<unknown>('/api/v1/health', {
       signal,
       validateStatus: () => true,
     })
