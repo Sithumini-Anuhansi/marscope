@@ -1,0 +1,178 @@
+import type { OverviewSnapshot } from '../types/mission'
+
+/**
+ * Interface sample data for layout and navigation development.
+ * Values are not mission telemetry and are not NASA scientific measurements.
+ */
+export const SAMPLE_OVERVIEW: OverviewSnapshot = {
+  mission: {
+    code: 'MS-ANORA-01',
+    name: 'ANORA Surface Reconnaissance',
+    operator: 'Team ANORA',
+    sol: 47,
+    phase: 'surface-operations',
+    status: 'nominal',
+    statusLabel: 'Surface operations proceeding within planned constraints',
+    nextWindow: 'Earth comms window in 02:14:00 (sample schedule)',
+  },
+  environment: [
+    {
+      id: 'env-temp',
+      label: 'Local air temperature',
+      displayValue: '−63 °C',
+      context: 'Sample UI reading for dashboard layout, not a live sensor feed.',
+      source: 'sample-ui',
+    },
+    {
+      id: 'env-pressure',
+      label: 'Surface pressure',
+      displayValue: '610 Pa',
+      context: 'Placeholder magnitude typical of Mars, not a recorded measurement.',
+      source: 'sample-ui',
+    },
+    {
+      id: 'env-dust',
+      label: 'Dust opacity index',
+      displayValue: '0.42',
+      context: 'Illustrative optical depth band for UI only.',
+      source: 'sample-ui',
+    },
+    {
+      id: 'env-wind',
+      label: 'Wind regime',
+      displayValue: 'Moderate',
+      context: 'Qualitative sample state. No anemometer data is connected.',
+      source: 'sample-ui',
+    },
+  ],
+  crew: [
+    {
+      id: 'crew-01',
+      callSign: 'Ares-1',
+      name: 'Mira Chen',
+      role: 'Commander',
+      dutyStatus: 'in-habitat',
+      locationLabel: 'Habitat Node A',
+    },
+    {
+      id: 'crew-02',
+      callSign: 'Ares-2',
+      name: 'Jonas Hale',
+      role: 'Science Officer',
+      dutyStatus: 'on-eva',
+      locationLabel: 'Traverse corridor B (sample)',
+    },
+    {
+      id: 'crew-03',
+      callSign: 'Ares-3',
+      name: 'Priya Nair',
+      role: 'Engineer',
+      dutyStatus: 'in-habitat',
+      locationLabel: 'Power bay',
+    },
+    {
+      id: 'crew-04',
+      callSign: 'Ares-4',
+      name: 'Eli Vargas',
+      role: 'Medical Officer',
+      dutyStatus: 'rest',
+      locationLabel: 'Crew quarters',
+    },
+  ],
+  hazardCount: 12,
+  safeLocationCount: 8,
+  resources: [
+    {
+      id: 'res-power',
+      category: 'power',
+      label: 'Power reserve',
+      remainingPercent: 78,
+      note: 'Sample habitat power margin for UI charts.',
+    },
+    {
+      id: 'res-water',
+      category: 'water',
+      label: 'Water stores',
+      remainingPercent: 64,
+      note: 'Sample recyclable water buffer.',
+    },
+    {
+      id: 'res-o2',
+      category: 'oxygen',
+      label: 'Oxygen buffer',
+      remainingPercent: 81,
+      note: 'Sample ECLSS oxygen margin.',
+    },
+    {
+      id: 'res-food',
+      category: 'consumables',
+      label: 'Consumables',
+      remainingPercent: 71,
+      note: 'Sample pantry duration estimate.',
+    },
+  ],
+  observations: [
+    {
+      id: 'obs-01',
+      title: 'Layered outcrop along traverse B',
+      author: 'Ares-2',
+      region: 'Sample sector 14E',
+      recordedAt: 'Sol 47 · 09:22',
+      summary: 'Crew note: possible sedimentary layering. Logged for later mapping review.',
+    },
+    {
+      id: 'obs-02',
+      title: 'Dust devil track crossing planned path',
+      author: 'Ares-1',
+      region: 'Sample sector 11N',
+      recordedAt: 'Sol 46 · 16:04',
+      summary: 'Placeholder observation used to demonstrate collaborative mapping entries.',
+    },
+    {
+      id: 'obs-03',
+      title: 'Shelter ridge with low slope',
+      author: 'Ares-3',
+      region: 'Sample sector 08W',
+      recordedAt: 'Sol 46 · 11:41',
+      summary: 'Candidate safe hold point pending terrain model ingest.',
+    },
+  ],
+  timeline: [
+    {
+      id: 'tl-01',
+      timeLabel: 'Sol 47 · 10:05',
+      title: 'EVA corridor B opened',
+      detail: 'Sample event. Science officer departed habitat under nominal checklist.',
+      tone: 'nominal',
+    },
+    {
+      id: 'tl-02',
+      timeLabel: 'Sol 47 · 08:40',
+      title: 'Dust opacity flagged for review',
+      detail: 'Sample caution. No live atmospheric model is attached yet.',
+      tone: 'alert',
+    },
+    {
+      id: 'tl-03',
+      timeLabel: 'Sol 47 · 06:15',
+      title: 'Morning systems brief complete',
+      detail: 'Sample briefing log for the activity timeline panel.',
+      tone: 'info',
+    },
+    {
+      id: 'tl-04',
+      timeLabel: 'Sol 46 · 19:20',
+      title: 'Collaborative map notes synced',
+      detail: 'Three crew observations staged locally for later backend sync.',
+      tone: 'info',
+    },
+  ],
+  mapMarkers: [
+    { id: 'm-h1', kind: 'hazard', label: 'Steep scarp', x: 28, y: 38 },
+    { id: 'm-h2', kind: 'hazard', label: 'Dust track', x: 62, y: 24 },
+    { id: 'm-h3', kind: 'hazard', label: 'Loose regolith', x: 74, y: 58 },
+    { id: 'm-c1', kind: 'crew', label: 'Ares-2', x: 46, y: 47 },
+    { id: 'm-c2', kind: 'crew', label: 'Habitat', x: 41, y: 52 },
+    { id: 'm-w1', kind: 'waypoint', label: 'Safe hold', x: 33, y: 68 },
+  ],
+}

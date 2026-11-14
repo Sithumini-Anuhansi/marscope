@@ -1,0 +1,83 @@
+import type { LucideIcon } from 'lucide-react'
+import {
+  Activity,
+  Compass,
+  FileText,
+  House,
+  Map,
+  Route,
+  Settings,
+  ShieldExclamationPoint,
+  TriangleExclamationPoint,
+  Users,
+} from 'lucide-react'
+
+export interface NavItem {
+  label: string
+  path: string
+  description: string
+  icon: LucideIcon
+}
+
+export const NAV_ITEMS: NavItem[] = [
+  {
+    label: 'Overview',
+    path: '/',
+    description: 'Mission status, environment summary, crew, and activity at a glance.',
+    icon: House,
+  },
+  {
+    label: 'Mars Explorer',
+    path: '/explorer',
+    description: 'Interactive Mars globe and site exploration. CesiumJS will be integrated here later.',
+    icon: Compass,
+  },
+  {
+    label: 'Hazard Analysis',
+    path: '/hazards',
+    description: 'Surface hazard identification, severity ranking, and spatial clustering.',
+    icon: TriangleExclamationPoint,
+  },
+  {
+    label: 'Route Planning',
+    path: '/routes',
+    description: 'Safe traverse planning between waypoints with terrain and hazard constraints.',
+    icon: Route,
+  },
+  {
+    label: 'Crew Tracking',
+    path: '/crew',
+    description: 'Live crew locations, duty cycles, and coordination during surface operations.',
+    icon: Users,
+  },
+  {
+    label: 'Collaborative Mapping',
+    path: '/mapping',
+    description: 'Shared map observations, annotations, and crew-to-crew notes.',
+    icon: Map,
+  },
+  {
+    label: 'Survival Assessment',
+    path: '/survival',
+    description: 'Resource margins, habitat viability, and mission survivability checks.',
+    icon: ShieldExclamationPoint,
+  },
+  {
+    label: 'Return Feasibility',
+    path: '/return',
+    description: 'Ascent, rendezvous, and Earth-return window assessment for the crew.',
+    icon: Activity,
+  },
+  {
+    label: 'Mission Reports',
+    path: '/reports',
+    description: 'Sol reports, observation logs, and exportable mission summaries.',
+    icon: FileText,
+  },
+  {
+    label: 'Settings',
+    path: '/settings',
+    description: 'Interface preferences, data source configuration, and operator profile.',
+    icon: Settings,
+  },
+]
