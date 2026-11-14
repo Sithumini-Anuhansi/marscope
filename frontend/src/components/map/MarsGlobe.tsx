@@ -281,12 +281,14 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
   )
 
   useEffect(() => {
-    if (!viewer || !focusLocation || viewer.isDestroyed()) return
+    const latitude = focusLocation?.latitudeDeg
+    const longitude = focusLocation?.longitudeDeg
+    if (!viewer || latitude == null || longitude == null || viewer.isDestroyed()) return
     viewer.camera.flyTo({
-      destination: Cartesian3.fromDegrees(focusLocation.longitudeDeg, focusLocation.latitudeDeg, 220_000, MARS_ELLIPSOID),
+      destination: Cartesian3.fromDegrees(longitude, latitude, 220_000, MARS_ELLIPSOID),
       duration: 1.2,
     })
-  }, [viewer, focusLocation?.latitudeDeg, focusLocation?.longitudeDeg])
+  }, [viewer, focusLocation])
 
   const usingMarsEllipsoid = viewer
     ? viewer.scene.ellipsoid.equals(Ellipsoid.MARS)

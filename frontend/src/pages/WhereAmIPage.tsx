@@ -18,7 +18,10 @@ function validPosition(latitude: unknown, longitude: unknown): latitude is numbe
 }
 
 export function WhereAmIPage() {
-  const [position, setPosition] = useState<LocatedPosition | null>(null)
+  const [position, setPosition] = useState<LocatedPosition | null>(() => {
+    if (typeof window === 'undefined') return null
+    try { const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as LocatedPosition | null; return parsed && validPosition(parsed.latitudeDeg, parsed.longitudeDeg) ? parsed : null } catch { return null }
+  })
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
   const [crew, setCrew] = useState<Astronaut[]>([])
@@ -31,22 +34,24 @@ export function WhereAmIPage() {
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) { const parsed = JSON.parse(raw) as LocatedPosition; if (validPosition(parsed.latitudeDeg, parsed.longitudeDeg)) setPosition(parsed) }
-    } catch { /* Local preference is optional. */ }
     void getMissionCrew().then((result) => { setCrew(result.astronauts); setCrewError(null) }).catch((error: unknown) => setCrewError(error instanceof Error ? error.message : 'Mission tracking is unavailable.'))
   }, [])
 
   useEffect(() => {
-    if (!position) { setNearby(null); return }
+    if (!position) return
     let active = true
-    setLoadingNearby(true); setNearbyError(null)
-    void discoverNearby(position.latitudeDeg, position.longitudeDeg).then((result) => { if (active) setNearby(result) }).catch((error: unknown) => { if (active) setNearbyError(error instanceof Error ? error.message : 'Nearby mission data is unavailable.') }).finally(() => { if (active) setLoadingNearby(false) })
+    queueMicrotask(() => {
+      if (!active) return
+      setLoadingNearby(true); setNearbyError(null)
+      void discoverNearby(position.latitudeDeg, position.longitudeDeg).then((result) => { if (active) setNearby(result) }).catch((error: unknown) => { if (active) setNearbyError(error instanceof Error ? error.message : 'Nearby mission data is unavailable.') }).finally(() => { if (active) setLoadingNearby(false) })
+    })
     return () => { active = false }
-  }, [position?.latitudeDeg, position?.longitudeDeg])
+  }, [position])
 
   const locationText = useMemo(() => position ? formatLonLat(position) : 'Position not identified', [position])
+  const focusLatitude = position?.latitudeDeg
+  const focusLongitude = position?.longitudeDeg
+  const mapFocus = useMemo(() => focusLatitude == null || focusLongitude == null ? null : { latitudeDeg: focusLatitude, longitudeDeg: focusLongitude }, [focusLatitude, focusLongitude])
   const filteredObservations = (nearby?.observations ?? []).filter((item) => filter === 'all' || item.category === filter)
 
   function setLocated(next: LocatedPosition) {
@@ -89,7 +94,7 @@ export function WhereAmIPage() {
   return <div className="mx-auto flex max-w-[1500px] flex-col gap-5">
     <section className="grid gap-5 overflow-hidden rounded-2xl border border-line bg-[radial-gradient(ellipse_at_72%_10%,rgba(138,62,36,.38),transparent_42%),linear-gradient(135deg,#15110e,#080706_68%)] p-5 md:grid-cols-[minmax(18rem,.7fr)_minmax(0,1.3fr)] md:p-7">
       <div className="flex flex-col justify-between gap-6"><BrandMark compact={false}/><div><p className="font-mono text-[11px] tracking-[.3em] text-gold uppercase">Interplanetary survival guide · Mars surface</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-sand md:text-6xl">WHERE AM I<span className="text-mars">?</span></h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">Orient yourself with the mission’s Mars map, nearby crew reports, and available terrain data. Every source is labeled; missing data stays visible.</p><a href="#identify" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-mars px-5 py-3 text-sm font-semibold text-white hover:bg-[#aa503a]"><LocateFixed className="h-4 w-4"/>Identify My Location</a></div><div className="flex items-center gap-2 rounded-xl border border-warn/25 bg-warn/5 p-3 text-xs leading-relaxed text-muted"><AlertTriangle className="h-4 w-4 shrink-0 text-warn"/>Browser GPS cannot determine a location on Mars. No compatible external positioning provider is connected.</div></div>
-      <div className="min-h-[24rem] md:min-h-[34rem]"><MapErrorBoundary><MarsGlobe focusLocation={position ? { latitudeDeg: position.latitudeDeg, longitudeDeg: position.longitudeDeg } : null} onSurfaceSelect={(point) => setLocated({ ...point, source: 'manual', timestamp: new Date().toISOString() })} crewMarkers={(nearby?.crew ?? []).flatMap((member) => member.latitude_deg == null || member.longitude_deg == null ? [] : [{ id: member.id, name: member.name, latitudeDeg: member.latitude_deg, longitudeDeg: member.longitude_deg, status: member.status }])} observationMarkers={(nearby?.observations ?? []).map((item) => ({ id: item.id, label: item.category, latitudeDeg: item.latitude_deg, longitudeDeg: item.longitude_deg, category: item.category, verificationStatus: item.verification_status }))}/></MapErrorBoundary></div>
+      <div className="min-h-[24rem] md:min-h-[34rem]"><MapErrorBoundary><MarsGlobe focusLocation={mapFocus} onSurfaceSelect={(point) => setLocated({ ...point, source: 'manual', timestamp: new Date().toISOString() })} crewMarkers={(nearby?.crew ?? []).flatMap((member) => member.latitude_deg == null || member.longitude_deg == null ? [] : [{ id: member.id, name: member.name, latitudeDeg: member.latitude_deg, longitudeDeg: member.longitude_deg, status: member.status }])} observationMarkers={(nearby?.observations ?? []).map((item) => ({ id: item.id, label: item.category, latitudeDeg: item.latitude_deg, longitudeDeg: item.longitude_deg, category: item.category, verificationStatus: item.verification_status }))}/></MapErrorBoundary></div>
     </section>
 
     <section id="identify" className="grid gap-4 lg:grid-cols-[1.15fr_.85fr]">

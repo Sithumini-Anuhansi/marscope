@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import ai, crew, datasets, hazards, health, mars, risk, routes
+from app.api.v1.endpoints import ai, crew, datasets, hazards, health, mars, risk, routes, solar_system
 from app.api.v1.endpoints import ai, datasets, hazards, health, mars, risk
 from app.api.v1.endpoints import crew, observations
 from app.core.config import settings
@@ -26,6 +26,7 @@ app.include_router(ai.router, prefix="/api/v1")
 app.include_router(crew.router, prefix="/api/v1")
 app.include_router(routes.router, prefix="/api/v1")
 app.include_router(observations.router, prefix="/api/v1")
+app.include_router(solar_system.router, prefix="/api/v1")
 
 @app.get("/health", include_in_schema=False)
 def legacy_health():

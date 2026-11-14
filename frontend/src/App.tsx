@@ -18,6 +18,9 @@ import { WhereAmIPage } from './pages/WhereAmIPage'
 const MarsExplorerPage = lazy(() =>
   import('./pages/MarsExplorerPage').then((module) => ({ default: module.MarsExplorerPage })),
 )
+const SolarSystemExplorerPage = lazy(() =>
+  import('./pages/SolarSystemExplorerPage').then((module) => ({ default: module.SolarSystemExplorerPage })),
+)
 
 export default function App() {
   return (
@@ -31,6 +34,14 @@ export default function App() {
             element={
               <Suspense fallback={<LoadingPanel label="Loading Mars Explorer…" />}>
                 <MarsExplorerPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="solar-system"
+            element={
+              <Suspense fallback={<LoadingPanel label="Loading Solar System Explorer…" />}>
+                <SolarSystemExplorerPage />
               </Suspense>
             }
           />
