@@ -2,6 +2,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.api.v1.endpoints import (
+    ai,
+    crew,
+    datasets,
+    hazards,
+    health,
+    mars,
+    observations,
+    return_feasibility,
+    risk,
+    routes,
+    survival,
+)
 
 app = FastAPI(
     title="MARSCOPE API",
@@ -22,6 +35,10 @@ app.include_router(hazards.router, prefix="/api/v1")
 app.include_router(risk.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
 app.include_router(crew.router, prefix="/api/v1")
+app.include_router(observations.router, prefix="/api/v1")
+app.include_router(routes.router, prefix="/api/v1")
+app.include_router(survival.router, prefix="/api/v1")
+app.include_router(return_feasibility.router, prefix="/api/v1")
 
 @app.get("/health", include_in_schema=False)
 def legacy_health():
