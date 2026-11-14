@@ -1,0 +1,5 @@
+import { API_BASE_URL } from './api'
+export interface ScenarioInput { scenario_id:string;name:string;return_duration_days:number|null;available_time_days:number|null;crew_available:boolean|null;route_status:'feasible'|'constrained'|'infeasible'|'unknown';environmental_risk:'low'|'moderate'|'high'|'unknown';equipment_ready:boolean|null;return_vehicle_ready:boolean|null }
+export interface ScenarioResult extends ScenarioInput { status:string;factors:string[];constraints:string[];missing_information:string[];limitations:string[] }
+export interface ReturnResult { mission_id:string;assessment_scope:string;overall_status:string;scenarios:ScenarioResult[];resource_telemetry_status:string;note:string }
+export async function assessReturn(missionId:string,scenarios:ScenarioInput[]):Promise<ReturnResult>{const response=await fetch(`${API_BASE_URL}/api/v1/missions/${missionId}/return-assessments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarios})});if(!response.ok)throw new Error((await response.json()).detail??`Assessment API returned HTTP ${response.status}`);return response.json() as Promise<ReturnResult>}
