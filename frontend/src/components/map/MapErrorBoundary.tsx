@@ -3,6 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 
 interface MapErrorBoundaryProps {
   children: ReactNode
+  label?: string
 }
 
 interface MapErrorBoundaryState {
@@ -31,11 +32,11 @@ export class MapErrorBoundary extends Component<MapErrorBoundaryProps, MapErrorB
       >
         <TriangleAlert className="h-6 w-6 text-ember" aria-hidden="true" />
         <h2 className="text-sm font-semibold tracking-wide text-sand uppercase">
-          Mars globe could not start
+          {this.props.label ?? 'Mars globe'} could not start
         </h2>
         <p className="max-w-md text-xs leading-relaxed text-muted">
-          The 3D map needs WebGL. Check that hardware acceleration is enabled and that the Cesium
-          assets are being served from /cesium, then try again. Details are in the browser console.
+          This 3D visualization needs WebGL. Check that hardware acceleration is enabled and the Cesium
+          assets are being served from /cesium, then retry. Details are in the browser console.
         </p>
         <button
           type="button"

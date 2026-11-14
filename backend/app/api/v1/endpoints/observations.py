@@ -60,6 +60,27 @@ async def _refresh_persisted() -> None:
     _observations.update((item.id,item) for item in records)
     _audit[:] = audit
 
+def _read_persisted_observations(mission_id: str, category: str | None, astronaut_id: str | None,
+ min_latitude: float | None, max_latitude: float | None, min_longitude: float | None, max_longitude: float | None) -> list[Observation]:
+    """Use the PostGIS geometry index for bounded map queries when configured."""
+    import psycopg
+    from psycopg.rows import dict_row
+    clauses = ['mission_id=%s']
+    params: list[object] = [mission_id]
+    if category is not None: clauses.append('category=%s'); params.append(category)
+    if astronaut_id is not None: clauses.append('astronaut_id=%s'); params.append(astronaut_id)
+    if min_latitude is not None: clauses.append('latitude_deg >= %s'); params.append(min_latitude)
+    if max_latitude is not None: clauses.append('latitude_deg <= %s'); params.append(max_latitude)
+    if min_longitude is not None: clauses.append('longitude_deg >= %s'); params.append(min_longitude)
+    if max_longitude is not None: clauses.append('longitude_deg <= %s'); params.append(max_longitude)
+    if min_latitude is not None and max_latitude is not None and min_longitude is not None and max_longitude is not None:
+        clauses.append('position && ST_MakeEnvelope(%s,%s,%s,%s,0)')
+        params.extend([min_longitude, min_latitude, max_longitude, max_latitude])
+    sql = "SELECT id,mission_id,astronaut_id,category,description,ST_Y(position) AS latitude_deg,ST_X(position) AS longitude_deg,submitted_at,severity,image_refs,verification_status,supporting_evidence FROM mission_observations WHERE " + ' AND '.join(clauses) + ' ORDER BY submitted_at DESC'
+    with psycopg.connect(os.environ['DATABASE_URL'], row_factory=dict_row) as connection, connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        return [Observation(**{**row, 'image_refs': row['image_refs'] or []}) for row in cursor.fetchall()]
+
 async def _broadcast(event: str, observation: Observation | None, observation_id: str | None = None) -> None:
     message={'type':event,'observation':observation.model_dump(mode='json') if observation else None,'observation_id':observation_id}
     for client in tuple(_clients):
@@ -71,6 +92,9 @@ async def list_observations(mission_id: str, category: str | None = None, astron
  min_latitude: float | None = Query(None,ge=-90,le=90), max_latitude: float | None = Query(None,ge=-90,le=90),
  min_longitude: float | None = Query(None,ge=-180,le=180), max_longitude: float | None = Query(None,ge=-180,le=180)):
     if mission_id != MISSION_ID: raise HTTPException(404,'Mission not found')
+    if os.getenv('DATABASE_URL'):
+        return await asyncio.to_thread(_read_persisted_observations, mission_id, category, astronaut_id,
+          min_latitude, max_latitude, min_longitude, max_longitude)
     await _refresh_persisted()
     return [o for o in _observations.values() if (category is None or o.category.value==category) and (astronaut_id is None or o.astronaut_id==astronaut_id) and (min_latitude is None or o.latitude_deg>=min_latitude) and (max_latitude is None or o.latitude_deg<=max_latitude) and (min_longitude is None or o.longitude_deg>=min_longitude) and (max_longitude is None or o.longitude_deg<=max_longitude)]
 

@@ -78,6 +78,13 @@ const DEFAULT_SETTINGS: GlobeDisplaySettings = {
 
 type PointerEventLike = { position: Cartesian2 } | { endPosition: Cartesian2 }
 
+export interface MarsGlobeProps {
+  focusLocation?: { latitudeDeg: number; longitudeDeg: number } | null
+  onSurfaceSelect?: (position: { latitudeDeg: number; longitudeDeg: number }) => void
+  crewMarkers?: Array<{ id: string; name: string; latitudeDeg: number; longitudeDeg: number; status: string }>
+  observationMarkers?: Array<{ id: string; label: string; latitudeDeg: number; longitudeDeg: number; category: string; verificationStatus: string }>
+}
+
 /** SkyBox.show exists at runtime in Cesium 1.140 but is missing from its type definitions. */
 function setSkyBoxVisible(skyBox: SkyBox, show: boolean): void {
   ;(skyBox as SkyBox & { show: boolean }).show = show
@@ -104,7 +111,7 @@ function useImageryProviders() {
   }, [])
 }
 
-export function MarsGlobe() {
+export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers = [], observationMarkers = [] }: MarsGlobeProps) {
   const [settings, setSettings] = useState<GlobeDisplaySettings>(DEFAULT_SETTINGS)
   const [imageryVisibility, setImageryVisibility] = useState(createDefaultLayerVisibility)
   const [tilesPending, setTilesPending] = useState(true)
@@ -220,8 +227,9 @@ export function MarsGlobe() {
     (event: PointerEventLike) => {
       handlePointer(event)
       if (!('position' in event)) return
-      if (!hazardAssessmentEnabled) return
       const clicked = pickMars(viewer, event.position)
+      if (clicked) onSurfaceSelect?.(clicked)
+      if (!hazardAssessmentEnabled) return
       if (!clicked) {
         setAssessmentError('Select a point on the visible Mars surface.')
         setAssessment(null)
@@ -269,8 +277,18 @@ export function MarsGlobe() {
           if (requestId === assessmentRequest.current) setAssessmentLoading(false)
         })
     },
-    [handlePointer, hazardAssessmentEnabled, viewer],
+    [handlePointer, hazardAssessmentEnabled, onSurfaceSelect, viewer],
   )
+
+  useEffect(() => {
+    const latitude = focusLocation?.latitudeDeg
+    const longitude = focusLocation?.longitudeDeg
+    if (!viewer || latitude == null || longitude == null || viewer.isDestroyed()) return
+    viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(longitude, latitude, 220_000, MARS_ELLIPSOID),
+      duration: 1.2,
+    })
+  }, [viewer, focusLocation])
 
   const usingMarsEllipsoid = viewer
     ? viewer.scene.ellipsoid.equals(Ellipsoid.MARS)
@@ -360,6 +378,20 @@ export function MarsGlobe() {
               }}
             />
           ) : null}
+          {focusLocation ? (
+            <Entity
+              name="Selected Mars location"
+              position={Cartesian3.fromDegrees(focusLocation.longitudeDeg, focusLocation.latitudeDeg, 0, MARS_ELLIPSOID)}
+              point={{ pixelSize: 15, color: Color.fromCssColorString('#65c7a0'), outlineColor: Color.WHITE, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }}
+              label={{ text: 'YOUR SELECTED LOCATION', font: '11px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -25), disableDepthTestDistance: Number.POSITIVE_INFINITY }}
+            />
+          ) : null}
+          {crewMarkers.map((marker, index) => (
+            <Entity key={`crew-${marker.id}`} name={`${marker.name} · ${marker.status}`} position={Cartesian3.fromDegrees(marker.longitudeDeg, marker.latitudeDeg, 0, MARS_ELLIPSOID)} point={{ pixelSize: 12, color: [Color.CYAN, Color.ORANGE, Color.LIME, Color.MAGENTA][index % 4], outlineColor: SPACE_COLOR, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: marker.name.toUpperCase(), font: '10px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -21), disableDepthTestDistance: Number.POSITIVE_INFINITY }} />
+          ))}
+          {observationMarkers.map((marker) => (
+            <Entity key={`observation-${marker.id}`} name={`${marker.label} · ${marker.verificationStatus}`} position={Cartesian3.fromDegrees(marker.longitudeDeg, marker.latitudeDeg, 0, MARS_ELLIPSOID)} point={{ pixelSize: 10, color: marker.category === 'danger' ? Color.RED : marker.category === 'shelter' ? Color.LIME : marker.category === 'water-ice' ? Color.CYAN : Color.GOLD, outlineColor: SPACE_COLOR, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: `${marker.category.toUpperCase()} · ${marker.verificationStatus.toUpperCase()}`, font: '9px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -18), disableDepthTestDistance: Number.POSITIVE_INFINITY }} />
+          ))}
           <CameraFlyTo
             key={homeNonce}
             destination={HOME_DESTINATION}

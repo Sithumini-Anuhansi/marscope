@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CameraFlyTo, Entity, Globe, ImageryLayer, ScreenSpaceEvent, ScreenSpaceEventHandler, Viewer, useCesium } from 'resium'
 import { Cartesian3, Cartographic, Color, Ellipsoid, ScreenSpaceEventType } from 'cesium'
 import { AlertTriangle, LoaderCircle, MapPin, RotateCcw, Route as RouteIcon } from 'lucide-react'
@@ -84,8 +85,14 @@ function RouteMapClick({ picking, onMapPoint }: { picking: Target | null; onMapP
 }
 
 export function RoutePlanningPage() {
+  const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<RoutePlannerStatus | null>(null)
-  const [points, setPoints] = useState<Partial<Record<Target, MarsRoutePoint>>>({})
+  const [points, setPoints] = useState<Partial<Record<Target, MarsRoutePoint>>>(() => {
+    const latitude = Number(searchParams.get('start_latitude_deg'))
+    const longitude = Number(searchParams.get('start_longitude_deg'))
+    if (!searchParams.has('start_latitude_deg') || !searchParams.has('start_longitude_deg') || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return {}
+    return { start: { latitude_deg: geodeticToPlanetocentricLatitude(latitude), longitude_deg: longitude, latitude_type: 'planetocentric', longitude_direction: 'positive-east' } }
+  })
   const [picking, setPicking] = useState<Target | null>(null)
   const [maximumResolution, setMaximumResolution] = useState('5')
   const [maximumSlope, setMaximumSlope] = useState('')
