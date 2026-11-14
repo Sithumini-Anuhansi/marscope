@@ -50,3 +50,47 @@ export interface HazardLocationResponse {
   unavailable_categories?: string[]
   message: string
 }
+
+export interface HazardServiceStatus {
+  status: string
+  available_categories: string[]
+  unavailable_categories: string[]
+  severity_policy: string
+  processing_run: string | null
+  message: string
+}
+
+export interface HazardRegionResponse {
+  assessment_status: 'limited-assessment' | 'insufficient-information'
+  assessment_mode?: string
+  region?: {
+    west_longitude_deg: number
+    east_longitude_deg: number
+    south_latitude_deg: number
+    north_latitude_deg: number
+    latitude_type: 'planetocentric'
+    longitude_direction: 'positive-east'
+  }
+  processing_run?: string
+  assessments: Array<{
+    assessment_id?: string
+    category: string
+    observation_kind: 'derived' | 'unavailable'
+    severity: HazardAssessment['severity']
+    summary?: {
+      minimum: number
+      maximum: number
+      mean: number
+      elevation_range_m: number | null
+      sample_count: number
+      units: string
+    }
+    methodology?: string
+    source_dataset?: HazardAssessment['source_dataset']
+    data_quality?: string
+    uncertainty?: string
+    classification?: HazardAssessment['classification']
+  }>
+  unavailable_categories?: string[]
+  message: string
+}

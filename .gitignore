@@ -37,3 +37,11 @@ data/processed/*
 ml_models/*.pkl
 ml_models/*.joblib
 ml_models/*.h5
+ml-models/**/*.joblib
+ml-models/**/*.pkl
+ml-models/**/*.pt
+data/ai4mars/**/*.jpg
+data/ai4mars/**/*.jpeg
+data/ai4mars/**/*.png
+data/ai4mars/**/*.zip
+data/ai4mars/**/*.npy
