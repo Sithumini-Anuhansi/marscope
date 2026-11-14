@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { AlertTriangle, ArrowUpRight, Brain, CircleHelp, LoaderCircle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Brain, CircleHelp, ImageUp, LoaderCircle, RefreshCw } from 'lucide-react'
+import { classifyTerrainImage, getAIServiceStatus, submitAIRiskSynthesis } from '../services/aiService'
 import { getHazardAssessmentAtLocation } from '../services/hazardService'
 import { getRiskServiceStatus, submitRiskAssessment } from '../services/riskService'
 import type { HazardAssessment, HazardLocationResponse } from '../types/hazard'
 import type { RiskAssessmentResult, RiskFeatureInput, RiskFeatureName, RiskServiceStatus } from '../types/risk'
+import type { AIServiceStatus, AIRiskSynthesisResponse, TerrainClassificationResponse } from '../types/ai'
 
 const FEATURE_LABELS: Record<string, string> = {
   terrain_slope: 'Terrain slope',
@@ -62,6 +64,12 @@ export function RiskAssessmentPage() {
   const [status, setStatus] = useState<RiskServiceStatus | null>(null)
   const [result, setResult] = useState<RiskAssessmentResult | null>(null)
   const [terrainSource, setTerrainSource] = useState<HazardLocationResponse | null>(null)
+  const [aiStatus, setAiStatus] = useState<AIServiceStatus | null>(null)
+  const [terrainImage, setTerrainImage] = useState<File | null>(null)
+  const [terrainClassification, setTerrainClassification] = useState<TerrainClassificationResponse | null>(null)
+  const [terrainLoading, setTerrainLoading] = useState(false)
+  const [terrainError, setTerrainError] = useState<string | null>(null)
+  const [synthesis, setSynthesis] = useState<AIRiskSynthesisResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,6 +82,7 @@ export function RiskAssessmentPage() {
           setError(requestError instanceof Error ? requestError.message : 'Could not read risk service status.')
         }
       })
+    void getAIServiceStatus(controller.signal).then(setAiStatus).catch(() => undefined)
     return () => controller.abort()
   }, [])
 
@@ -95,9 +104,15 @@ export function RiskAssessmentPage() {
     setError(null)
     setResult(null)
     setTerrainSource(null)
+    setSynthesis(null)
     try {
       const terrain = await getHazardAssessmentAtLocation(latitudeDeg, longitudeDeg, controller.signal)
       setTerrainSource(terrain)
+      setSynthesis(await submitAIRiskSynthesis({
+        latitude_deg: latitudeDeg,
+        longitude_deg: longitudeDeg,
+        ...(terrainClassification?.assessment_id ? { terrain_assessment_id: terrainClassification.assessment_id } : {}),
+      }, controller.signal))
       const assessment = await submitRiskAssessment({
         latitude_deg: latitudeDeg,
         longitude_deg: longitudeDeg,
@@ -113,6 +128,23 @@ export function RiskAssessmentPage() {
     }
   }
 
+  async function handleTerrainClassification() {
+    if (!terrainImage) {
+      setTerrainError('Choose a JPEG or PNG rover image first.')
+      return
+    }
+    setTerrainLoading(true)
+    setTerrainError(null)
+    setTerrainClassification(null)
+    try {
+      setTerrainClassification(await classifyTerrainImage(terrainImage))
+    } catch (requestError) {
+      setTerrainError(requestError instanceof Error ? requestError.message : 'Terrain classification request failed.')
+    } finally {
+      setTerrainLoading(false)
+    }
+  }
+
   const terrainMetrics = terrainSource?.assessments.filter((item) => item.observation_kind === 'derived') ?? []
 
   return (
@@ -124,6 +156,48 @@ export function RiskAssessmentPage() {
           Query terrain metrics for a Mars location and submit their provenance to the risk service. A validated ML model is not currently available; results will say so instead of inventing a score.
         </p>
       </header>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
+        <div className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
+          <div className="flex items-center gap-2">
+            <ImageUp className="h-4 w-4 text-gold" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-sand">AI4MARS terrain classification</h2>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted">Upload a rover JPEG/PNG to classify visible terrain pixels when a reviewed model is installed. Soil, bedrock, sand and big-rock predictions are image classes, not hazard labels.</p>
+          <input className="mt-3 block w-full text-xs text-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-void file:px-3 file:py-2 file:text-sand" type="file" accept="image/jpeg,image/png" onChange={(event) => { setTerrainImage(event.target.files?.[0] ?? null); setTerrainClassification(null); setTerrainError(null) }} />
+          <button type="button" onClick={() => void handleTerrainClassification()} disabled={!terrainImage || terrainLoading} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2.5 text-xs font-medium text-gold hover:bg-gold/15 disabled:opacity-50">
+            {terrainLoading ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ImageUp className="h-4 w-4" aria-hidden="true" />}
+            {terrainLoading ? 'Classifying…' : 'Classify terrain image'}
+          </button>
+          {terrainError ? <p className="mt-3 text-xs text-mars" role="alert">{terrainError}</p> : null}
+          {terrainClassification ? <p className="mt-3 text-[11px] text-muted" role="status">{terrainClassification.assessment_status}: {terrainClassification.reason ?? terrainClassification.explanation}</p> : null}
+        </div>
+
+        <div className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-gold" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-sand">Hybrid AI readiness</h2>
+          </div>
+          {aiStatus ? (
+            <>
+              <p className="mt-2 text-xs text-sand">Terrain model: <span className="text-gold">{aiStatus.components.terrain_classifier.status}</span> · Environmental engine: <span className="text-gold">{aiStatus.components.environmental_feature_engine.status}</span></p>
+              <ul className="mt-3 space-y-1 text-[10px] leading-relaxed text-muted">{aiStatus.limitations.map((item) => <li key={item}>• {item}</li>)}</ul>
+            </>
+          ) : <p className="mt-2 text-xs text-muted">Checking AI service readiness…</p>}
+        </div>
+      </section>
+
+      {terrainClassification?.mask_png_base64 ? (
+        <section className="grid gap-4 rounded-2xl border border-line bg-panel/80 p-4 md:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.2fr)] md:p-5">
+          <img className="max-h-72 w-full rounded-lg border border-line bg-void object-contain" src={`data:image/png;base64,${terrainClassification.mask_png_base64}`} alt="Predicted AI4MARS terrain class mask" />
+          <div>
+            <p className="font-mono text-[10px] text-gold uppercase">{terrainClassification.model_version} · {terrainClassification.dominant_terrain_class}</p>
+            <h2 className="mt-1 text-sm font-semibold text-sand">Terrain class coverage</h2>
+            <ul className="mt-3 space-y-2">{terrainClassification.terrain_classes.map((item) => <li key={item.class_id} className="flex items-center justify-between gap-3 text-xs"><span className="text-sand">{item.class_name.replaceAll('_', ' ')}</span><span className="font-mono text-gold">{(item.pixel_fraction * 100).toFixed(1)}%</span></li>)}</ul>
+            <p className="mt-3 text-[10px] leading-relaxed text-muted">{terrainClassification.uncertainty} {terrainClassification.georeferencing}</p>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
         <div className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
@@ -259,9 +333,23 @@ export function RiskAssessmentPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 rounded-lg border border-line bg-void/50 p-3 text-[11px] leading-relaxed text-muted">
-                  No feature contributions can be attributed without a matching validated model or configured policy rule.
-                </p>
+                result.model_feature_importance?.length ? (
+                  <>
+                    <p className="mt-2 text-[10px] text-muted">Global permutation importance from the held-out evaluation; it does not explain this individual prediction.</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {result.model_feature_importance.slice(0, 5).map((item) => (
+                        <li key={item.feature} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-void/50 px-3 py-2 text-[11px]">
+                          <span className="text-sand">{explainCategory(item.feature)}</span>
+                          <span className="font-mono text-gold">ΔF1 {item.mean_f1_drop.toFixed(3)} ± {item.std.toFixed(3)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="mt-2 rounded-lg border border-line bg-void/50 p-3 text-[11px] leading-relaxed text-muted">
+                    No feature contributions can be attributed without a matching validated model or configured policy rule.
+                  </p>
+                )
               )}
             </div>
           </div>
@@ -288,6 +376,19 @@ export function RiskAssessmentPage() {
           </Link>
         </section>
       )}
+
+      {synthesis ? (
+        <section className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><p className="font-mono text-[10px] text-gold uppercase">Explainable synthesis · {synthesis.assessment_status}</p><h2 className="mt-1 text-lg font-semibold text-sand">{synthesis.overall_assessment}</h2></div>
+            <span className="rounded-full border border-warn/35 px-2.5 py-1 font-mono text-[10px] text-warn uppercase">No safety decision</span>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted">{synthesis.overall_assessment_reason}</p>
+          {synthesis.environmental_indicators.length ? <ul className="mt-3 grid gap-2 md:grid-cols-3">{synthesis.environmental_indicators.map((item) => <li key={item.category} className="rounded-lg border border-line bg-void/40 p-3 text-[11px]"><p className="font-medium text-sand">{explainCategory(item.category)} · {item.severity}</p><p className="mt-1 text-gold">{item.measurement ? `${item.measurement.value.toFixed(2)} ${item.measurement.units}` : item.classification?.classification_status}</p><p className="mt-1 text-[10px] text-muted">{item.methodology ?? item.classification?.reason}</p></li>)}</ul> : null}
+          <p className="mt-3 text-[10px] leading-relaxed text-muted">{synthesis.explanation}</p>
+          {synthesis.missing_information.length ? <ul className="mt-2 grid gap-1 text-[10px] text-muted sm:grid-cols-2">{synthesis.missing_information.map((item) => <li key={item}>• {item}</li>)}</ul> : null}
+        </section>
+      ) : null}
     </div>
   )
 }

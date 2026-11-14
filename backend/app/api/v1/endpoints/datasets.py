@@ -15,9 +15,14 @@ def _with_local_sample(item: dict) -> dict:
     result = dict(item)
     manifest_path = RAW_DATA_ROOT / "mola" / "megt90n000cb.manifest.json"
     if item["id"] == "mola" and manifest_path.is_file():
-        result["local_sample"] = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        result["local_sample"] = manifest
+        result["downloaded"] = True
+        result["status"] = manifest.get("data_status", "downloaded; validation state unknown")
+        result["structurally_validated"] = bool(manifest.get("validation"))
     else:
         result["local_sample"] = None
+        result["structurally_validated"] = False
     return result
 
 @router.get("")

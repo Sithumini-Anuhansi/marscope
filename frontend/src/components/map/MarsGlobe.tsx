@@ -42,6 +42,8 @@ import type {
 } from '../../types/map'
 import type { HazardLocationResponse } from '../../types/hazard'
 import { getHazardAssessmentAtLocation } from '../../services/hazardService'
+import { submitAIRiskSynthesis } from '../../services/aiService'
+import type { AIRiskSynthesisResponse } from '../../types/ai'
 import {
   MARS_ELLIPSOID,
   MARS_EQUATORIAL_RADIUS_METERS,
@@ -106,7 +108,7 @@ export function MarsGlobe() {
   const [settings, setSettings] = useState<GlobeDisplaySettings>(DEFAULT_SETTINGS)
   const [imageryVisibility, setImageryVisibility] = useState(createDefaultLayerVisibility)
   const [tilesPending, setTilesPending] = useState(true)
-  const [tileErrors, setTileErrors] = useState(false)
+  const [tileErrorLayers, setTileErrorLayers] = useState<Set<ImageryLayerId>>(() => new Set())
   const [homeNonce, setHomeNonce] = useState(0)
   const [layersOpen, setLayersOpen] = useState(isLargeScreen)
   const [legendOpen, setLegendOpen] = useState(isLargeScreen)
@@ -115,6 +117,9 @@ export function MarsGlobe() {
   const [assessment, setAssessment] = useState<HazardLocationResponse | null>(null)
   const [assessmentLoading, setAssessmentLoading] = useState(false)
   const [assessmentError, setAssessmentError] = useState<string | null>(null)
+  const [riskSynthesis, setRiskSynthesis] = useState<AIRiskSynthesisResponse | null>(null)
+  const [riskSynthesisLoading, setRiskSynthesisLoading] = useState(false)
+  const [riskSynthesisError, setRiskSynthesisError] = useState<string | null>(null)
   const [assessedCell, setAssessedCell] = useState<{ longitudeDeg: number; latitudeDeg: number } | null>(null)
   const assessmentRequest = useRef(0)
   const readout = useRef<CoordinateReadoutHandle>(null)
@@ -126,7 +131,7 @@ export function MarsGlobe() {
     ? 'error'
     : !anyImageryOn
       ? 'ellipsoid-only'
-      : tileErrors
+      : tileErrorLayers.size > 0
         ? 'degraded'
         : tilesPending
           ? 'loading'
@@ -136,7 +141,9 @@ export function MarsGlobe() {
   useEffect(() => {
     const removers = IMAGERY_LAYER_IDS.flatMap((id) => {
       const provider = providers[id]
-      return provider ? [provider.errorEvent.addEventListener(() => setTileErrors(true))] : []
+      return provider ? [provider.errorEvent.addEventListener(() => {
+        setTileErrorLayers((current) => new Set(current).add(id))
+      })] : []
     })
     return () => removers.forEach((remove) => remove())
   }, [providers])
@@ -180,7 +187,11 @@ export function MarsGlobe() {
 
   const handleToggleImagery = useCallback((id: ImageryLayerId, visible: boolean) => {
     setImageryVisibility((current) => ({ ...current, [id]: visible }))
-    setTileErrors(false)
+    setTileErrorLayers((current) => {
+      const next = new Set(current)
+      next.delete(id)
+      return next
+    })
   }, [])
 
   const handleTileProgress = useCallback((queued: number) => setTilesPending(queued > 0), [])
@@ -198,6 +209,9 @@ export function MarsGlobe() {
     setHazardAssessmentEnabled(visible)
     setAssessment(null)
     setAssessmentError(null)
+    setRiskSynthesis(null)
+    setRiskSynthesisError(null)
+    setRiskSynthesisLoading(false)
     setAssessmentLoading(false)
     setAssessedCell(null)
   }, [])
@@ -220,7 +234,21 @@ export function MarsGlobe() {
       setAssessmentLoading(true)
       setAssessmentError(null)
       setAssessment(null)
+      setRiskSynthesis(null)
+      setRiskSynthesisError(null)
+      setRiskSynthesisLoading(true)
       setAssessedCell(null)
+
+      void submitAIRiskSynthesis({ latitude_deg: planetocentricLatitude, longitude_deg: clicked.longitudeDeg })
+        .then((result) => {
+          if (requestId === assessmentRequest.current) setRiskSynthesis(result)
+        })
+        .catch((error: unknown) => {
+          if (requestId === assessmentRequest.current) setRiskSynthesisError(error instanceof Error ? error.message : 'AI risk synthesis request failed.')
+        })
+        .finally(() => {
+          if (requestId === assessmentRequest.current) setRiskSynthesisLoading(false)
+        })
 
       void getHazardAssessmentAtLocation(planetocentricLatitude, clicked.longitudeDeg)
         .then((result) => {
@@ -364,6 +392,7 @@ export function MarsGlobe() {
               {layersOpen ? (
                 <MapLayers
                   imageryVisibility={imageryVisibility}
+                  imageryErrorLayers={tileErrorLayers}
                   onToggleImagery={handleToggleImagery}
                   hazardAssessmentEnabled={hazardAssessmentEnabled}
                   onToggleHazardAssessment={handleToggleHazardAssessment}
@@ -375,6 +404,9 @@ export function MarsGlobe() {
                     assessment={assessment}
                     loading={assessmentLoading}
                     error={assessmentError}
+                    riskSynthesis={riskSynthesis}
+                    riskSynthesisLoading={riskSynthesisLoading}
+                    riskSynthesisError={riskSynthesisError}
                   />
                 </div>
               ) : null}
@@ -449,10 +481,16 @@ function TerrainAssessmentPanel({
   assessment,
   loading,
   error,
+  riskSynthesis,
+  riskSynthesisLoading,
+  riskSynthesisError,
 }: {
   assessment: HazardLocationResponse | null
   loading: boolean
   error: string | null
+  riskSynthesis: AIRiskSynthesisResponse | null
+  riskSynthesisLoading: boolean
+  riskSynthesisError: string | null
 }) {
   const title: Record<string, string> = {
     terrain_slope: 'Slope',
@@ -538,6 +576,25 @@ function TerrainAssessmentPanel({
           ) : null}
         </>
       ) : null}
+      <section className="mt-3 border-t border-line pt-3" aria-live="polite" aria-busy={riskSynthesisLoading}>
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-[10px] font-semibold text-sand">AI risk synthesis</h4>
+          <span className="rounded-full border border-warn/35 px-2 py-0.5 font-mono text-[8px] text-warn uppercase">
+            {riskSynthesisLoading ? 'Loading' : riskSynthesis?.assessment_status ?? 'Not assessed'}
+          </span>
+        </div>
+        {riskSynthesisLoading ? <p className="mt-2 text-[10px] text-muted">Combining available science indicators…</p> : null}
+        {riskSynthesisError ? <p className="mt-2 text-[10px] text-mars" role="alert">{riskSynthesisError}</p> : null}
+        {riskSynthesis ? (
+          <>
+            <p className="mt-2 text-xs font-medium text-sand">{riskSynthesis.overall_assessment}</p>
+            <p className="mt-1 text-[9px] leading-snug text-muted">{riskSynthesis.explanation}</p>
+            {riskSynthesis.missing_information.length ? (
+              <p className="mt-2 text-[9px] leading-snug text-muted">Missing: {riskSynthesis.missing_information.slice(0, 2).join('; ')}</p>
+            ) : null}
+          </>
+        ) : null}
+      </section>
     </aside>
   )
 }

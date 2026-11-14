@@ -12,6 +12,8 @@ This 4 pixels-per-degree MOLA grid is a historical map with approximately 14.8 k
 - `GET /api/v1/hazards/location?latitude_deg=10&longitude_deg=0`: sample terrain metrics at a location. Latitude is planetocentric; longitude is positive east. Add `categories=terrain_slope,surface_roughness` to filter.
 - `GET /api/v1/hazards/region?west_longitude_deg=-1&south_latitude_deg=-1&east_longitude_deg=1&north_latitude_deg=1`: summarize raster metrics over a bounding region. Use `categories=` to filter. Antimeridian and raster-seam windows are split during reads.
 
+The frontend Hazard Analysis page calls the status and regional endpoints, lets the user choose among the three available MOLA metrics, and displays regional minimum, mean, maximum, valid-cell count, source product, resolution, and uncertainty caveats. The Mars Explorer separately supports click-to-query point assessments. Neither view draws hazard polygons: the API's FeatureCollection stays empty until a validated spatial classification method exists.
+
 Categories currently computed from MOLA: `terrain_slope`, `surface_roughness`, and `elevation_variation`. Crater/depression, temperature, wind, dust, and radiation assessments are explicitly reported as unavailable without validated detection methods and source data. If processed rasters or optional geospatial dependencies are absent, the result is `insufficient-information`; no safe classification is inferred.
 
 The API returns derived assessments and an empty hazard FeatureCollection until classification rules are configured. `severity` remains `unclassified` by default. This is intentional: no universal astronaut-safe thresholds are established by this coarse MOLA product.
