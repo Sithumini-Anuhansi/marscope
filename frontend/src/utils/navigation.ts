@@ -39,6 +39,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: TriangleExclamationPoint,
   },
   {
+    label: 'Risk Assessment',
+    path: '/risk',
+    description: 'Location-based terrain features, risk readiness, missing inputs, and explanations.',
+    icon: Activity,
+  },
+  {
     label: 'Route Planning',
     path: '/routes',
     description: 'Safe traverse planning between waypoints with terrain and hazard constraints.',

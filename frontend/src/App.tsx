@@ -8,6 +8,7 @@ import { HazardAnalysisPage } from './pages/HazardAnalysisPage'
 import { MissionReportsPage } from './pages/MissionReportsPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ReturnFeasibilityPage } from './pages/ReturnFeasibilityPage'
+import { RiskAssessmentPage } from './pages/RiskAssessmentPage'
 import { RoutePlanningPage } from './pages/RoutePlanningPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SurvivalAssessmentPage } from './pages/SurvivalAssessmentPage'
@@ -32,6 +33,7 @@ export default function App() {
             }
           />
           <Route path="hazards" element={<HazardAnalysisPage />} />
+          <Route path="risk" element={<RiskAssessmentPage />} />
           <Route path="routes" element={<RoutePlanningPage />} />
           <Route path="crew" element={<CrewTrackingPage />} />
           <Route path="mapping" element={<CollaborativeMappingPage />} />

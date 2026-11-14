@@ -14,6 +14,7 @@ import {
 } from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { Info, Layers, LoaderCircle, type LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   CameraFlyTo,
@@ -527,6 +528,14 @@ function TerrainAssessmentPanel({
             </p>
           ) : null}
           <p className="mt-2 text-[10px] leading-snug text-muted">{assessment.message}</p>
+          {assessment.sampled_cell ? (
+            <Link
+              className="mt-3 inline-flex items-center rounded-lg border border-gold/35 bg-gold/10 px-2.5 py-2 text-[10px] font-medium text-gold hover:bg-gold/15"
+              to={`/risk?latitude_deg=${assessment.sampled_cell.latitude_deg}&longitude_deg=${assessment.sampled_cell.longitude_deg}`}
+            >
+              Open risk assessment for this cell
+            </Link>
+          ) : null}
         </>
       ) : null}
     </aside>
