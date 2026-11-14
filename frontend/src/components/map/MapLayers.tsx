@@ -4,6 +4,7 @@ import type { ImageryLayerId, MapLayerCategory } from '../../types/map'
 
 interface MapLayersProps {
   imageryVisibility: Record<ImageryLayerId, boolean>
+  imageryErrorLayers: Set<ImageryLayerId>
   onToggleImagery: (id: ImageryLayerId, visible: boolean) => void
   hazardAssessmentEnabled: boolean
   onToggleHazardAssessment: (visible: boolean) => void
@@ -15,7 +16,7 @@ const CATEGORY_LABEL: Record<MapLayerCategory, string> = {
   operations: 'Operations',
 }
 
-export function MapLayers({ imageryVisibility, onToggleImagery, hazardAssessmentEnabled, onToggleHazardAssessment }: MapLayersProps) {
+export function MapLayers({ imageryVisibility, imageryErrorLayers, onToggleImagery, hazardAssessmentEnabled, onToggleHazardAssessment }: MapLayersProps) {
   const categories: MapLayerCategory[] = ['imagery', 'environment', 'operations']
 
   return (
@@ -60,6 +61,11 @@ export function MapLayers({ imageryVisibility, onToggleImagery, hazardAssessment
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2 text-[12px] text-sand">
                         {layer.label}
+                        {imageryErrorLayers.has(layer.id as ImageryLayerId) ? (
+                          <span className="rounded-full border border-mars/40 px-1.5 py-0.5 font-mono text-[9px] tracking-wide text-mars uppercase" role="status">
+                            Tile errors
+                          </span>
+                        ) : null}
                         {!live ? (
                           <span className="rounded-full border border-gold/30 px-1.5 py-0.5 font-mono text-[9px] tracking-wide text-gold uppercase">
                             Coming soon

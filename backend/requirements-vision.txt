@@ -1,0 +1,4 @@
+-r requirements-ml.txt
+Pillow>=10.0,<13.0
+torch>=2.4,<3.0
+torchvision>=0.19,<1.0

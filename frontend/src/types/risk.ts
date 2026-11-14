@@ -32,6 +32,7 @@ export interface RiskServiceStatus {
   rule_based_baseline: string
   available_input_features: string[]
   additional_possible_features: string[]
+  active_model_features?: string[]
   score_available: boolean
   confidence_available: boolean
   reasons: string[]
@@ -40,7 +41,7 @@ export interface RiskServiceStatus {
 
 export interface RiskAssessmentResult {
   assessment_id: string
-  assessment_status: 'unavailable' | 'rule-based-limited'
+  assessment_status: 'unavailable' | 'rule-based-limited' | 'model-prediction-limited'
   location: {
     latitude_deg: number
     longitude_deg: number
@@ -60,6 +61,11 @@ export interface RiskAssessmentResult {
     rule?: { comparison: string; threshold: number; units: string }
     reference?: string
     rationale?: string
+  }>
+  model_feature_importance?: Array<{
+    feature: string
+    mean_f1_drop: number
+    std: number
   }>
   feature_inputs: Array<{
     feature: string

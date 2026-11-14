@@ -16,9 +16,10 @@ The grid reports median topography per 0.25° bin relative to the MOLA areoid; t
 
 ## Other products
 
-- THEMIS, CTX, HiRISE, and atmospheric products remain `planned` in the API registry. Their access method, product-level units, resolution, coordinate reference, and observation context must be taken from their individual PDS labels before ingestion is enabled.
-- The frontend already catalogs NASA Mars Trek Viking MDIM and MOLA color shaded-relief WMTS layers. The MOLA WMTS is a rendered hillshade, not elevation measurements or a terrain mesh. Browser tile delivery and alignment still need a visual landmark check.
-- The Murray Lab CTX via Esri OnMars entry is marked beta in the frontend because tile scheme and alignment have not been verified here.
+- The API registry now identifies concrete candidate products rather than claiming that the instruments are ingested: THEMIS IR-GEO V2; the Murray Lab global CTX mosaic v1; HiRISE map-projected RDR; and MRO MARCI/MCS products. It reports them as `catalogued-ingestion-not-implemented`. Each source is too large, product-specific, or spatially selective for an unbounded download in this application. Before ingestion, select one scene/product, obtain its PDS label and detached metadata, and write a product-specific validator/processor. MARCI imagery is not a direct wind or temperature measurement.
+- The MOLA sample is detected by the API registry from its local manifest. Its status means downloaded and structurally validated; it does not mean scientific quality was independently assessed.
+- The frontend catalogs NASA Mars Trek Viking MDIM and MOLA color shaded-relief WMTS layers. The MOLA WMTS is a rendered hillshade, not elevation measurements or a terrain mesh. Cesium runtime tile errors are now attributed to the layer that raised them and shown beside that layer. This catches browser network/CORS/service failures at runtime, but visual landmark alignment still needs a human review in the running app.
+- The Murray Lab CTX via Esri OnMars entry is marked beta because the app has not yet verified projection alignment against known Mars landmarks. The global PDS mosaic itself is multi-terabyte; use scene/browse products or the tile cache for an initial implementation.
 
 ## Authoritative references
 
@@ -26,3 +27,7 @@ The grid reports median topography per 0.25° bin relative to the MOLA areoid; t
 - [NASA PDS MEGDR collection: 128 pixels per degree](https://pds.nasa.gov/ds-view/pds/viewCollection.jsp?identifier=urn%3Anasa%3Apds%3Amgs_mola_topography_derived%3Adata_meg128)
 - [PDS Geosciences Node: MOLA MEGDR format and product naming](https://ode.rsl.wustl.edu/mars/pagehelp/Content/Missions_Instruments/MGS/MOLA/MEGDR.htm)
 - [NASA Mars Trek WMTS API and layer services](https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars)
+- [PDS THEMIS IR-GEO V2 product description](https://pds.nasa.gov/ds-view/pds/viewDataset.jsp?dsid=ODY-M-THM-5-IRGEO-V2.0)
+- [PDS Murray Lab global CTX mosaic v1 bundle](https://pds.nasa.gov/ds-view/pds/viewBundle.jsp?identifier=urn%3Anasa%3Apds%3Amars_mro_ctx_globalmosaicv01_murraylab_2023&version=1.0)
+- [PDS MRO MARCI daily global mosaics](https://pds.nasa.gov/ds-view/pds/viewBundle.jsp?identifier=urn%3Anasa%3Apds%3Amars_mro_marci_dailyglobalmosaics_wang_2023&version=2.0)
+- [PDS MRO Mars Climate Sounder Level 4 data set](https://pds.nasa.gov/ds-view/pds/viewProfile.jsp?dsid=MRO-M-MCS-4-RDR-V1.0)
