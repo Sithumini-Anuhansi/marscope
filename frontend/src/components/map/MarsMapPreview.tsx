@@ -100,7 +100,7 @@ export function MarsMapPreview({ markers }: MarsMapPreviewProps) {
         </div>
         <p className="max-w-md text-[11px] leading-snug text-muted sm:max-w-[240px] sm:text-right">
           Decorative staging scene only. Marker positions are sample layout coordinates, not a
-          geographic map. CesiumJS integration is reserved for a later stage.
+          geographic map. Open Mars Explorer for the interactive globe.
         </p>
       </header>
 

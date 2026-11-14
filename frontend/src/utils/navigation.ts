@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: 'Mars Explorer',
     path: '/explorer',
-    description: 'Interactive Mars globe and site exploration. CesiumJS will be integrated here later.',
+    description: 'Interactive 3D Mars globe with imagery layers, coordinates and a map legend.',
     icon: Compass,
   },
   {
