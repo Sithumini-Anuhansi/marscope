@@ -20,4 +20,6 @@ Optional MOLA terrain processing uses Rasterio and NumPy. Install it separately 
 
 Hazard assessment scope, API parameters, uncertainty behavior, and the optional evidence-required policy format are documented in `docs/hazard-analysis.md`.
 
+Crew tracking uses `GET /api/v1/missions/ares-iv/crew` and WebSocket `/api/v1/missions/ares-iv/locations`. Send JSON location updates with `astronaut_id`, `latitude_deg`, `longitude_deg`, and an ISO-8601 timezone-aware `timestamp`. Coordinates are geodetic latitude and east-positive longitude in degrees on Mars 2000; they are not Earth/WGS84 coordinates. History is capped at 500 points per crew member in memory. For durable history, install PostGIS, apply `database/crew_tracking.sql`, configure `DATABASE_URL`, and install requirements; every accepted location is then stored in PostGIS with SRID 0 (unprojected Mars degrees). The API remains usable in memory without a database. Fixes older than 60 seconds are rejected, and positions with no recent update are reported stale.
+
 AI/ML risk API status, validated-input schema, rule-baseline behavior, model limitations, and readiness criteria are documented in `docs/risk-assessment.md`.
