@@ -12,6 +12,7 @@ import { RiskAssessmentPage } from './pages/RiskAssessmentPage'
 import { RoutePlanningPage } from './pages/RoutePlanningPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SurvivalAssessmentPage } from './pages/SurvivalAssessmentPage'
+import { WhereAmIPage } from './pages/WhereAmIPage'
 
 // Cesium is heavy, so the Mars Explorer route is loaded on demand.
 const MarsExplorerPage = lazy(() =>
@@ -23,7 +24,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>
-          <Route index element={<OverviewPage />} />
+          <Route index element={<WhereAmIPage />} />
+          <Route path="dashboard" element={<OverviewPage />} />
           <Route
             path="explorer"
             element={

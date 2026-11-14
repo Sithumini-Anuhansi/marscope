@@ -21,8 +21,14 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    label: 'Overview',
+    label: 'Where Am I?',
     path: '/',
+    description: 'Identify a Mars location and review nearby mission information.',
+    icon: Compass,
+  },
+  {
+    label: 'Mission Dashboard',
+    path: '/dashboard',
     description: 'Mission status, environment summary, crew, and activity at a glance.',
     icon: House,
   },
