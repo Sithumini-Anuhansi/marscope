@@ -1,23 +1,27 @@
-# MARSCOPE
-
-### Interplanetary Survival and Mars Exploration Companion
+# MARSCOPE - Interplanetary Survival and Mars Exploration Companion
 
 ![Marscope](images/marscope.png)
 
-**Explore the unknown. Understand your surroundings. Plan the next step.**
+**Interplanetary Survival Guide - Martian Map**
 
 Developed by **Team ANORA** for the NASA Space Apps Challenge.
 
+---
+
 ## Project links
 
-- **Project demo video:** 
+- **Project demo video:** [Watch Marscope Demo](https://drive.google.com/file/d/1nIvo9Y7VKh1W_92xnZgeKTd9OIrPiT0l/view?usp=sharing)
 - **Seven-slide project demonstration:** [Google Slides](https://docs.google.com/presentation/d/1dts4-IvVR_BkmmEoPLKNQgvCVmyoqI0A5KdsTGIEVDY/edit?usp=sharing)
+
+---
 
 ## Summary
 
 MARSCOPE is an interactive Mars exploration and mission-support app built to help crews and mission planners examine surface locations and organize exploration. Its Marswalk map brings together available planetary imagery, terrain information, named features, crew reports, and points of interest. Users can inspect Gale Crater and other mapped regions, review nearby observations, and explore route-planning, hazard, survival, and crew-tracking tools.
 
 The project addresses the challenge of turning scattered Mars data into a localized view that can support planning a surface excursion. It combines available NASA and planetary datasets with clear source and readiness information, and uses visibly labeled demo data where live mission data is unavailable. This distinction matters: Mars terrain measurements and crew reports can inform exploration, but they do not automatically establish that a place is safe. MARSCOPE provides an accessible foundation for exploring the data and identifying what is known, missing, or still needs validation before operational use.
+
+---
 
 ## What the app does
 
@@ -30,6 +34,8 @@ MARSCOPE combines an interactive 3D Mars globe with a Solar System location view
 - **Crew tracking, collaborative mapping, mission reports, and survival resources:** connected service workflows with clearly identified sample records where live mission telemetry or operational records are unavailable.
 - **Settings and data readiness:** service connection state, last-checked times, source status, and demo/live distinctions.
 
+---
+
 ## Data status and limitations
 
 MARSCOPE separates downloaded and processed datasets, live archive discovery, source references, and illustrative demo records:
@@ -41,6 +47,8 @@ MARSCOPE separates downloaded and processed datasets, live archive discovery, so
 - The MEDA integration can ingest a product index; the index itself does not contain the calibrated measurements. MCD, MARCI, MCS, RAD, and AI4MARS references do not mean that their measurements or a trained model are integrated into risk analysis.
 - Demo locations, crew positions, service examples, reports, and source-shaped example records are simulated interface data. They are labeled as demos and must not be treated as NASA observations, measured conditions, or model outputs.
 - No validated hazard polygons, astronaut-safe thresholds, trained human-risk classifier, or operational safety verdict is provided. Route outputs and terrain metrics are exploratory decision-support context only.
+
+---
 
 ## NASA data and resources
 
@@ -63,6 +71,8 @@ The following NASA data or resources are used by the app or are linked as source
 
 The app also links to [NASA PDS MARCI](https://pds.nasa.gov/ds-view/pds/viewBundle.jsp?identifier=urn%3Anasa%3Apds%3Amars_mro_marci_dailyglobalmosaics_wang_2023&version=2.0), the [PDS Mars Climate Sounder archive](https://pds-atmospheres.nmsu.edu/data_and_services/atmospheres_data/MARS/mcs.html), the [PDS RAD archive](https://pds-ppi.igpp.ucla.edu/collection/MSL-M-RAD-3-RDR-V1.0%3ADATA), and the [NASA Open Data AI4MARS record](https://data.nasa.gov/dataset/ai4mars-a-dataset-for-terrain-aware-autonomous-driving-on-mars) as source references. Their measurements are not represented by MARSCOPE's demo fixtures; an AI4MARS model is not installed or trained.
 
+---
+
 ## Space agency partner and other resources
 
 | Resource | Use in MARSCOPE |
@@ -75,6 +85,8 @@ The app also links to [NASA PDS MARCI](https://pds.nasa.gov/ds-view/pds/viewBund
 | [Mars Climate Database (MCD)](https://www-mars.lmd.jussieu.fr/mars/access) | Catalog/reference entry only. No MCD measurements are ingested; MCD-shaped demo values are illustrative, not retrieved from the database. |
 | [AI4MARS v0.6 on Zenodo](https://zenodo.org/records/15995036) | Dataset-edition reference only; no archive is bundled and no model is trained from it. Review the applicable license before using the archive. |
 
+---
+
 ### Development tools and libraries
 
 - [React](https://react.dev/), [React Router](https://reactrouter.com/), and [TypeScript](https://www.typescriptlang.org/) for the frontend.
@@ -85,9 +97,13 @@ The app also links to [NASA PDS MARCI](https://pds.nasa.gov/ds-view/pds/viewBund
 - PostgreSQL and PostGIS are optional for durable mission-record storage; the local API can run in memory without them.
 - [IBM Plex Sans and Mono via Google Fonts](https://fonts.google.com/specimen/IBM+Plex+Sans) for interface typography.
 
+---
+
 ## Super Intelligence (SI) disclosure
 
 OpenAI ChatGPT and Google Gemini assisted with research and information gathering, coding and debugging, writing and editing, and visual design/image creation. AI assistance was also used while developing the project's AI/ML architecture. The application does not contain a trained human-risk model or fabricated scientific measurements. Demo fixtures are clearly identified and are not used as scientific data or training labels. AI-generated visual assets in the application are marked as AI-generated; no NASA logo or mission identifier was generated or modified.
+
+---
 
 ## Run locally
 
@@ -113,9 +129,7 @@ npm run dev
 
 Open the local URL printed by Vite (normally `http://localhost:5173`). The API docs are at `http://127.0.0.1:8000/docs`. The frontend defaults to that API address; set `VITE_API_BASE_URL` if the backend uses another host or port. Optional MOLA processing dependencies and data downloads are documented in [`backend/docs/geospatial-processing.md`](backend/docs/geospatial-processing.md).
 
-## Data use and endorsement notice
-
-NASA does not endorse any non-U.S. Government entity and is not responsible for information contained on non-U.S. Government websites. For non-U.S. Government websites, participants must comply with any data use parameters of that specific website. NASA PDS datasets may be served through university-hosted PDS nodes; see the individual source for applicable access and data-use terms. External services are subject to their providers' availability and terms.
+---
 
 ## Team
 
