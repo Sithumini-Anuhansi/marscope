@@ -14,7 +14,7 @@ import {
   type Viewer as CesiumViewer,
 } from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
-import { Info, Layers, LoaderCircle, type LucideIcon } from 'lucide-react'
+import { Compass, Info, Layers, LoaderCircle, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
@@ -84,7 +84,7 @@ type PointerEventLike = { position: Cartesian2 } | { endPosition: Cartesian2 }
 export interface MarsGlobeProps {
   focusLocation?: { latitudeDeg: number; longitudeDeg: number } | null
   onSurfaceSelect?: (position: { latitudeDeg: number; longitudeDeg: number }) => void
-  crewMarkers?: Array<{ id: string; name: string; latitudeDeg: number; longitudeDeg: number; status: string }>
+  crewMarkers?: Array<{ id: string; name: string; latitudeDeg: number; longitudeDeg: number; status: string; altitudeKm?: number; path?: Array<{ latitudeDeg: number; longitudeDeg: number; altitudeKm?: number }> }>
   observationMarkers?: Array<{ id: string; label: string; latitudeDeg: number; longitudeDeg: number; category: string; verificationStatus: string }>
   explorationMarkers?: Array<{ id: string; label: string; latitudeDeg: number; longitudeDeg: number; color: string; category: string }>
 }
@@ -123,9 +123,10 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
   const [homeNonce, setHomeNonce] = useState(0)
   const [layersOpen, setLayersOpen] = useState(isLargeScreen)
   const [legendOpen, setLegendOpen] = useState(isLargeScreen)
+  const [coordinatesOpen, setCoordinatesOpen] = useState(isLargeScreen)
   const [viewer, setViewer] = useState<CesiumViewer | null>(null)
   const [hazardAssessmentEnabled, setHazardAssessmentEnabled] = useState(false)
-  const [namedFeaturesVisible, setNamedFeaturesVisible] = useState(true)
+  const [namedFeaturesVisible, setNamedFeaturesVisible] = useState(false)
   const [namedFeatures, setNamedFeatures] = useState<NamedMarsFeature[]>([])
   const [namedFeaturesTotal, setNamedFeaturesTotal] = useState(0)
   const [namedFeaturesLoading, setNamedFeaturesLoading] = useState(false)
@@ -257,7 +258,7 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
           north: Math.min(90, CesiumMath.toDegrees(rectangle.north)),
         }
         const altitude = viewer.camera.positionCartographic.height
-        const minimumDiameterKm = altitude > 9_000_000 ? 1_000 : altitude > 3_000_000 ? 300 : altitude > 900_000 ? 8 : 0
+        const minimumDiameterKm = altitude > 9_000_000 ? 1_000 : altitude > 3_000_000 ? 300 : altitude > 900_000 ? 80 : altitude > 300_000 ? 25 : altitude > 80_000 ? 8 : 2
         setNamedFeaturesLoading(true)
         setNamedFeaturesError(null)
         void getNamedMarsFeatures(bounds, minimumDiameterKm, requestController.signal)
@@ -446,7 +447,7 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
             />
           ) : null}
           {crewMarkers.map((marker, index) => (
-            <Entity key={`crew-${marker.id}`} name={`${marker.name} · ${marker.status}`} position={Cartesian3.fromDegrees(marker.longitudeDeg, marker.latitudeDeg, 0, MARS_ELLIPSOID)} point={{ pixelSize: 12, color: [Color.CYAN, Color.ORANGE, Color.LIME, Color.MAGENTA][index % 4], outlineColor: SPACE_COLOR, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: marker.name.toUpperCase(), font: '10px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -21), disableDepthTestDistance: Number.POSITIVE_INFINITY }} />
+            <Entity key={`crew-${marker.id}`} name={`${marker.name} · ${marker.status}${marker.altitudeKm == null ? '' : ` · ${marker.altitudeKm} km altitude`}`} position={Cartesian3.fromDegrees(marker.longitudeDeg, marker.latitudeDeg, (marker.altitudeKm ?? 0) * 1000, MARS_ELLIPSOID)} point={{ pixelSize: 12, color: [Color.CYAN, Color.ORANGE, Color.LIME, Color.MAGENTA][index % 4], outlineColor: SPACE_COLOR, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: marker.altitudeKm == null ? marker.name.toUpperCase() : `${marker.name.toUpperCase()} · ${marker.altitudeKm} KM ORBIT`, font: '10px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -21), disableDepthTestDistance: Number.POSITIVE_INFINITY }} polyline={marker.path && marker.path.length > 1 ? { positions: marker.path.map((point) => Cartesian3.fromDegrees(point.longitudeDeg, point.latitudeDeg, (point.altitudeKm ?? 0) * 1000, MARS_ELLIPSOID)), width: 3, material: [Color.CYAN, Color.ORANGE, Color.LIME, Color.MAGENTA][index % 4].withAlpha(0.75), clampToGround: marker.altitudeKm == null } : undefined} />
           ))}
           {observationMarkers.map((marker) => (
             <Entity key={`observation-${marker.id}`} name={`${marker.label} · ${marker.verificationStatus}`} position={Cartesian3.fromDegrees(marker.longitudeDeg, marker.latitudeDeg, 0, MARS_ELLIPSOID)} point={{ pixelSize: 10, color: marker.category === 'danger' ? Color.RED : marker.category === 'shelter' ? Color.LIME : marker.category === 'water-ice' ? Color.CYAN : Color.GOLD, outlineColor: SPACE_COLOR, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: `${marker.category.toUpperCase()} · ${marker.verificationStatus.toUpperCase()}`, font: '9px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -18), disableDepthTestDistance: Number.POSITIVE_INFINITY }} />
@@ -536,17 +537,23 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
                 open={legendOpen}
                 onToggle={() => setLegendOpen((open) => !open)}
               />
+              <PanelToggle
+                icon={Compass}
+                label="Coordinates"
+                open={coordinatesOpen}
+                onToggle={() => setCoordinatesOpen((open) => !open)}
+              />
             </div>
           </div>
 
           <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-end">
-            <div className="pointer-events-auto">
+            {coordinatesOpen ? <div className="pointer-events-auto">
               <CoordinateDisplay
                 ref={readout}
                 imageryStatus={imageryStatus}
                 usingMarsEllipsoid={usingMarsEllipsoid}
               />
-            </div>
+            </div> : null}
             {legendOpen ? (
               <div className="pointer-events-auto sm:max-w-[16rem]">
                 <MapLegend />

@@ -9,6 +9,12 @@ const MISSION_ID = 'ares-iv'
 const CREW = [['crew-01','Asha Raman'],['crew-02','Mateo Silva'],['crew-03','Nia Okafor'],['crew-04','Owen Park']] as const
 
 export function CollaborativeMappingPage() {
+  const [demo, setDemo] = useState(false)
+  const demoObservations: Observation[] = useMemo(() => [
+    { id:'demo-gale-ice', mission_id:MISSION_ID, astronaut_id:'crew-01', category:'water-ice', description:'Demo sample: spectral follow-up candidate on a shadowed crater-facing slope.', latitude_deg:-4.2, longitude_deg:137.8, submitted_at:'2026-11-15T08:00:00Z', severity:null, image_refs:[], verification_status:'unverified', supporting_evidence:'Illustrative only; no instrument data attached.' },
+    { id:'demo-jezero-rock', mission_id:MISSION_ID, astronaut_id:'crew-02', category:'discovery', description:'Demo sample: layered outcrop candidate for a fictional traverse stop.', latitude_deg:18.5, longitude_deg:77.3, submitted_at:'2026-11-15T08:05:00Z', severity:null, image_refs:[], verification_status:'unverified', supporting_evidence:'Illustrative only; not a real crew report.' },
+    { id:'demo-ice-risk', mission_id:MISSION_ID, astronaut_id:'crew-03', category:'obstacle', description:'Demo sample: rough terrain patch to review before route selection.', latitude_deg:46.8, longitude_deg:117.7, submitted_at:'2026-11-15T08:10:00Z', severity:'moderate', image_refs:[], verification_status:'unverified', supporting_evidence:'Synthetic map marker; not a validated hazard.' },
+  ], [])
   const [observations, setObservations] = useState<Observation[]>([])
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [crewFilter, setCrewFilter] = useState('all')
@@ -41,11 +47,12 @@ export function CollaborativeMappingPage() {
     return () => socket.close()
   }, [])
 
-  const visible = useMemo(() => observations.filter((o) => (categoryFilter === 'all' || o.category === categoryFilter) && (crewFilter === 'all' || o.astronaut_id === crewFilter)), [observations, categoryFilter, crewFilter])
-  const active = observations.find((o) => o.id === selected) ?? null
+  const displayObservations = demo ? [...demoObservations, ...observations] : observations
+  const visible = displayObservations.filter((o) => (categoryFilter === 'all' || o.category === categoryFilter) && (crewFilter === 'all' || o.astronaut_id === crewFilter))
+  const active = displayObservations.find((o) => o.id === selected) ?? null
 
   const submit = async (event: React.FormEvent) => {
-    event.preventDefault(); if (!draftLocation) return
+    event.preventDefault(); if (demo) { setError('Demo mode is read-only. Stop demo before submitting a live crew observation.'); return } if (!draftLocation) return
     setSaving(true); setError(null)
     const draft: ObservationDraft = { astronaut_id: actorId, category, description, ...draftLocation,
       severity: severity || undefined, image_refs: imageRefs.split('\n').map((ref) => ref.trim()).filter(Boolean), supporting_evidence: evidence || undefined }
@@ -55,21 +62,24 @@ export function CollaborativeMappingPage() {
   }
 
   const verify = async (observation: Observation, verification_status: 'verified'|'under-review'|'rejected') => {
+    if (observation.id.startsWith('demo-')) return
     try { const updated = await updateObservation(MISSION_ID, observation.id, { verification_status }, actorId, role, actorToken); setObservations((current) => current.map((item) => item.id === updated.id ? updated : item)) }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not update review status') }
   }
   const remove = async (observation: Observation) => {
+    if (observation.id.startsWith('demo-')) return
     try { await deleteObservation(MISSION_ID, observation.id, actorId, role, actorToken); setObservations((current) => current.filter((item) => item.id !== observation.id)); setSelected(null) }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not delete report') }
   }
 
   return <main className="space-y-5">
-    <header className="flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[10px] tracking-[0.24em] text-gold uppercase">Ares IV · Shared mission layer</p><h1 className="mt-2 text-2xl font-semibold text-sand">Collaborative map</h1><p className="mt-1 max-w-2xl text-sm text-muted">Share location-based reports with the crew. Every new report is unverified until mission control reviews it.</p></div><span className="flex items-center gap-2 rounded-full border border-line px-3 py-2 text-xs text-muted"><Radio size={13}/>Live sync {status}</span></header>
+    <header className="flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[10px] tracking-[0.24em] text-gold uppercase">Ares IV · Shared mission layer</p><h1 className="mt-2 text-2xl font-semibold text-sand">Collaborative map</h1><p className="mt-1 max-w-2xl text-sm text-muted">Share location-based reports with the crew. Every new report is unverified until mission control reviews it.</p></div><div className="flex gap-2"><span className="flex items-center gap-2 rounded-full border border-line px-3 py-2 text-xs text-muted"><Radio size={13}/>Live sync {status}</span><button type="button" onClick={()=>setDemo(v=>!v)} className="rounded-lg border border-line px-3 py-2 text-xs text-sand">{demo?'Stop demo':'Start demo'}</button></div></header>
+    {demo ? <p role="status" className="rounded-xl border border-warn/30 bg-warn/5 p-3 text-xs text-warn">DEMO ONLY · Sample locations and reports are synthetic and never sent to the collaborative mapping service. Real crew observations require mission telemetry and authorized access.</p> : null}
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
       <section className="relative h-[min(70vh,52rem)] min-h-[30rem] overflow-hidden rounded-2xl border border-line bg-[#070605]" aria-label="Interactive Mars observation map">
         <Viewer full ellipsoid={Ellipsoid.MARS} baseLayer={false} animation={false} timeline={false} geocoder={false} homeButton={false} sceneModePicker={false} navigationHelpButton={false} fullscreenButton={false} infoBox={false} selectionIndicator={false} skyAtmosphere={false}>
           <Globe showGroundAtmosphere={false} baseColor={Color.fromCssColorString('#6b2d22')}/>
-          {visible.map((observation) => { const color = CATEGORIES.find((c) => c.id === observation.category)?.color ?? '#ded6c6'; const author = CREW.find(([id]) => id === observation.astronaut_id)?.[1] ?? observation.astronaut_id; return <Entity key={observation.id} name={`${observation.category} · ${author}`} position={Cartesian3.fromDegrees(observation.longitude_deg, observation.latitude_deg, 0, Ellipsoid.MARS)} point={{ pixelSize: selected === observation.id ? 15 : 11, color: Color.fromCssColorString(color), outlineColor: Color.BLACK, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: `${observation.category.toUpperCase()} · ${author}`, font: '10px IBM Plex Mono', fillColor: Color.fromCssColorString(color), outlineColor: Color.BLACK, outlineWidth: 3, disableDepthTestDistance: Number.POSITIVE_INFINITY }} /> })}
+          {visible.map((observation) => { const color = CATEGORIES.find((c) => c.id === observation.category)?.color ?? '#ded6c6'; const author = CREW.find(([id]) => id === observation.astronaut_id)?.[1] ?? observation.astronaut_id; return <Entity key={observation.id} name={`${observation.category} · ${author}`} position={Cartesian3.fromDegrees(observation.longitude_deg, observation.latitude_deg, 0, Ellipsoid.MARS)} point={{ pixelSize: selected === observation.id ? 15 : 11, color: Color.fromCssColorString(color), outlineColor: Color.BLACK, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={selected === observation.id ? { text: `${observation.category.toUpperCase()} · ${author}`, font: '10px IBM Plex Mono', fillColor: Color.fromCssColorString(color), outlineColor: Color.BLACK, outlineWidth: 3, disableDepthTestDistance: Number.POSITIVE_INFINITY } : undefined} /> })}
           <MapClickBridge onLocation={setDraftLocation}/>
         </Viewer>
         <div className="pointer-events-none absolute left-4 top-4 rounded-lg border border-line bg-void/85 px-3 py-2 text-[10px] text-muted"><span className="font-mono text-gold">MARS 2000</span> · Click surface to mark · Geodetic / east-positive</div>

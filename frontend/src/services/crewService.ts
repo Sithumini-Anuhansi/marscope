@@ -1,6 +1,6 @@
 import { API_BASE_URL } from './api'
 export type CrewStatus = 'on-eva' | 'in-habitat' | 'rest' | 'comms' | 'stale' | 'untracked'
-export interface CrewPosition { latitude_deg: number; longitude_deg: number; timestamp: string }
+export interface CrewPosition { latitude_deg: number; longitude_deg: number; timestamp: string; altitude_km?: number }
 export interface Astronaut { id: string; name: string; role: string; status: CrewStatus; latitude_deg: number | null; longitude_deg: number | null; location_timestamp: string | null; path: CrewPosition[] }
 export interface MissionCrew { id: string; name: string; astronauts: Astronaut[] }
 export async function getMissionCrew(): Promise<MissionCrew> {

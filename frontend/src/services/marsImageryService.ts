@@ -92,7 +92,7 @@ export const MAP_LAYER_DEFINITIONS: MapLayerDefinition[] = [
     id: 'named-features',
     category: 'operations',
     label: 'Named Mars features',
-    description: 'Scale-aware IAU-approved feature names from the USGS Gazetteer. NASA does not endorse this application or the file host.',
+    description: 'Off by default. Shows up to 24 of the largest scale-appropriate IAU feature names from the USGS Gazetteer. NASA does not endorse this application or the file host.',
     availability: 'live',
     defaultVisible: true,
     credit: 'USGS Astrogeology Science Center / IAU Working Group for Planetary System Nomenclature',

@@ -13,7 +13,7 @@ export async function getNamedMarsFeatures(
       east_deg: bounds.east,
       north_deg: bounds.north,
       minimum_diameter_km: minimumDiameterKm,
-      limit: 2000,
+      limit: 24,
     },
     signal,
   })

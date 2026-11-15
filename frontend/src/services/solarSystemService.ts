@@ -7,7 +7,7 @@ export interface CelestialBody {
   description: string; discovery: string | null; parent_id: string | null; reference_source: string; value_kind: string
 }
 export interface EphemerisVector { epoch: string; x_km: number; y_km: number; z_km: number; vx_km_s: number | null; vy_km_s: number | null; vz_km_s: number | null }
-export interface EphemerisTrack { target: string; center: string; status: 'live' | 'cached' | 'stale' | 'unavailable'; fetched_at: string | null; cache_age_seconds: number | null; error: string | null; vectors: EphemerisVector[] }
+export interface EphemerisTrack { target: string; center: string; status: 'live' | 'cached' | 'stale' | 'demo' | 'unavailable'; fetched_at: string | null; cache_age_seconds: number | null; error: string | null; vectors: EphemerisVector[] }
 export interface PositionsResponse { source: string; coordinate_frame: string; reference_plane: string; reference_system: string; time_scale: string; output_units: string; tracks: EphemerisTrack[] }
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {

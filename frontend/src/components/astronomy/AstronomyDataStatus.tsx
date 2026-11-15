@@ -7,7 +7,8 @@ export function AstronomyDataStatus({ tracks, source = 'NASA/JPL Horizons' }: { 
   const cached = states.filter((status) => status === 'cached').length
   const stale = states.filter((status) => status === 'stale').length
   const unavailable = states.filter((status) => status === 'unavailable').length
-  const label = unavailable === tracks.length ? 'Unavailable' : stale ? 'Cached result · stale' : cached ? 'Cached result' : 'Retrieved from source'
+  const demo = states.filter((status) => status === 'demo').length
+  const label = demo ? 'SIMULATED · DEMO' : unavailable === tracks.length ? 'Unavailable' : stale ? 'Cached result · stale' : cached ? 'Cached result' : 'Retrieved from source'
   const latestEpoch = tracks.flatMap((track) => track.vectors).map((vector) => vector.epoch)[0]
   const fetched = tracks.find((track) => track.fetched_at)?.fetched_at
   return <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-void/65 px-3 py-2 text-[10px]" role="status">

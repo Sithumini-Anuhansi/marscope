@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, LoaderCircle, Moon, RotateCcw, Sun } from 'lucide-react'
+import { ArrowLeft, ArrowRight, LoaderCircle, Moon, RotateCcw } from 'lucide-react'
 import { AstronomyDataStatus } from '../components/astronomy/AstronomyDataStatus'
 import { CelestialBodyInfoPanel } from '../components/astronomy/CelestialBodyInfoPanel'
 import { MarsSystemViewer } from '../components/astronomy/MarsSystemViewer'
@@ -8,6 +8,7 @@ import { SolarSystemViewer } from '../components/astronomy/SolarSystemViewer'
 import { LoadingPanel } from '../components/common/LoadingPanel'
 import { MapErrorBoundary } from '../components/map/MapErrorBoundary'
 import { getCelestialBodies, getMarsSystem, getSolarPositions, type CelestialBody, type EphemerisTrack } from '../services/solarSystemService'
+import { DEMO_BODIES, DEMO_NEARBY_OBJECTS, demoMarsTracks, demoSolarTracks } from '../data/demoSolarSystem'
 
 type View = 'overview' | 'mars-system'
 
@@ -25,11 +26,17 @@ export function SolarSystemExplorerPage() {
   const [bodyError, setBodyError] = useState<string | null>(null)
   const [solarError, setSolarError] = useState<string | null>(null)
   const [marsError, setMarsError] = useState<string | null>(null)
+  const [demo, setDemo] = useState(false)
   const marsRequest = useRef<AbortController | null>(null)
   const bodyById = useMemo(() => new Map(bodies.map((body) => [body.id, body])), [bodies])
   const selectedBody = bodyById.get(selectedId) ?? bodyById.get('mars')
-  const selectedTrack = (view === 'overview' ? solarTracks : marsTracks).find((track) => track.target === selectedId)
   const systemEpoch = marsEpoch
+
+  const displayedBodies = demo ? DEMO_BODIES : bodies
+  const displayedSolarTracks = demo ? demoSolarTracks() : solarTracks
+  const displayedMarsTracks = demo ? demoMarsTracks() : marsTracks
+  const displayBodyById = new Map(displayedBodies.map((body) => [body.id, body]))
+  const displaySelectedBody = displayBodyById.get(selectedId) ?? displayBodyById.get('mars')
 
   const loadSolarSystem = useCallback(async (signal?: AbortSignal) => {
     const start = new Date()
@@ -64,22 +71,23 @@ export function SolarSystemExplorerPage() {
   function selectMarsBody(id: string) { setSelectedId(id) }
 
   return <div className="mx-auto flex max-w-[1600px] flex-col gap-4">
-    <header className="flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><p className="font-mono text-[10px] tracking-[.28em] text-gold uppercase">Team ANORA · scientific visualization</p><h1 className="mt-1 text-2xl font-semibold text-sand md:text-3xl">Solar System Explorer</h1><p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">Explore JPL Horizons state vectors, then enter the Mars system to inspect Phobos and Deimos. Static body facts and dynamic positions are identified separately.</p></div><div className="flex items-center gap-2 rounded-lg border border-line bg-void px-3 py-2 text-[10px] text-muted"><Sun className="h-3.5 w-3.5 text-gold"/>Ephemerides are fetched on demand</div></header>
+    <header className="flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><p className="font-mono text-[10px] tracking-[.28em] text-gold uppercase">Team ANORA · scientific visualization</p><h1 className="mt-1 text-2xl font-semibold text-sand md:text-3xl">Solar System Explorer</h1><p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">Explore JPL Horizons state vectors, then enter the Mars system to inspect Phobos and Deimos. Static body facts and dynamic positions are identified separately.</p></div><button type="button" onClick={() => setDemo((value) => !value)} className={`rounded-lg border px-3 py-2 text-xs ${demo ? 'border-warn/50 bg-warn/10 text-warn' : 'border-line text-sand'}`}>{demo ? 'Exit demo' : 'Start demo'}</button></header>
+    {demo ? <p role="status" className="rounded-xl border border-warn/30 bg-warn/5 p-3 text-xs text-warn">DEMO ONLY · Approximate circular-orbit positions, sample spacecraft, and Mars moon paths are illustrative. They are not current NASA/JPL ephemerides. Live access depends on the backend and JPL service being reachable.</p> : null}
     <SolarSystemNavigation inMarsSystem={view === 'mars-system'} selectedName={view === 'mars-system' && selectedId !== 'mars' ? selectedBody?.name : undefined} onOverview={showOverview} onMars={() => { if (view !== 'mars-system') enterMarsSystem(); else setSelectedId('mars') }}/>
 
-    {bodyError ? <div role="alert" className="rounded-xl border border-warn/30 bg-warn/5 p-3 text-xs text-warn">Body reference data is unavailable: {bodyError}</div> : null}
-    {loadingBodies && bodies.length === 0 ? <LoadingPanel label="Loading celestial body reference data…"/> : null}
+    {bodyError && !demo ? <div role="alert" className="rounded-xl border border-warn/30 bg-warn/5 p-3 text-xs text-warn">Body reference data is unavailable: {bodyError}</div> : null}
+    {loadingBodies && bodies.length === 0 && !demo ? <LoadingPanel label="Loading celestial body reference data…"/> : null}
 
     {view === 'overview' ? <>
       {loadingSolar && solarTracks.length === 0 ? <div className="flex min-h-96 items-center justify-center rounded-2xl border border-line bg-void text-sm text-muted"><LoaderCircle className="mr-2 h-4 w-4 animate-spin text-gold"/>Requesting planetary vectors from JPL Horizons…</div> : <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
-        <MapErrorBoundary label="Solar System visualization"><SolarSystemViewer bodies={bodies} tracks={solarTracks} selectedId={selectedId} onSelect={selectOverviewBody} homeNonce={homeNonce} onReset={() => { setSelectedId(''); setHomeNonce((n) => n + 1) }}/></MapErrorBoundary>
-        {selectedBody ? <div className="space-y-3"><CelestialBodyInfoPanel body={selectedBody} track={selectedTrack} centerName="Sun"/>{selectedBody.id === 'mars' ? <button onClick={enterMarsSystem} className="flex w-full items-center justify-center gap-2 rounded-xl bg-mars px-4 py-3 text-sm font-semibold text-white hover:bg-[#a94d38]">Enter Mars system <ArrowRight className="h-4 w-4"/></button> : <button onClick={() => setSelectedId('')} className="flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm text-sand hover:bg-panel-alt"><ArrowLeft className="h-4 w-4"/>Reset selection</button>}</div> : <div className="rounded-2xl border border-line bg-panel p-5 text-sm text-muted">Select a planet marker to inspect its static reference facts and dynamic heliocentric position.</div>}
+        <MapErrorBoundary label="Solar System visualization"><SolarSystemViewer bodies={displayedBodies} tracks={displayedSolarTracks} selectedId={selectedId} onSelect={selectOverviewBody} homeNonce={homeNonce} onReset={() => { setSelectedId(''); setHomeNonce((n) => n + 1) }} extraBodies={demo ? DEMO_NEARBY_OBJECTS : []}/></MapErrorBoundary>
+        {displaySelectedBody ? <div className="space-y-3"><CelestialBodyInfoPanel body={displaySelectedBody} track={displayedSolarTracks.find((track) => track.target === selectedId)} centerName="Sun"/>{selectedId === 'mars' ? <button onClick={enterMarsSystem} className="flex w-full items-center justify-center gap-2 rounded-xl bg-mars px-4 py-3 text-sm font-semibold text-white hover:bg-[#a94d38]">Enter Mars system <ArrowRight className="h-4 w-4"/></button> : <button onClick={() => setSelectedId('')} className="flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm text-sand hover:bg-panel-alt"><ArrowLeft className="h-4 w-4"/>Reset selection</button>}</div> : <div className="rounded-2xl border border-line bg-panel p-5 text-sm text-muted">Select a planet marker to inspect its static reference facts and dynamic heliocentric position.</div>}
       </div>}
-      {solarTracks.length ? <AstronomyDataStatus tracks={solarTracks}/> : null}{solarError ? <p role="alert" className="rounded-lg border border-warn/30 p-3 text-xs text-warn">Ephemeris status: {solarError} The visualization will not substitute invented coordinates.</p> : null}
+      {displayedSolarTracks.length ? <AstronomyDataStatus tracks={displayedSolarTracks} source={demo ? 'Local illustrative model' : 'NASA/JPL Horizons'}/> : null}{solarError && !demo ? <p role="alert" className="rounded-lg border border-warn/30 p-3 text-xs text-warn">Ephemeris status: {solarError} Live positions require the backend and JPL service to be reachable.</p> : null}
       <p className="text-[10px] leading-relaxed text-muted">Overview coordinate frame: Sun-centered vectors in the ECLIPTIC plane and ICRF reference system, returned in km and km/s, UTC input epoch (UT). Curves show a one-year sampled Horizons trajectory; outer-planet curves are partial arcs. Distances use one scene unit per million km; body marker sizes are illustrative and enlarged.</p>
     </> : <>
       <div className="mb-1 flex flex-wrap gap-2">{['phobos','deimos'].map((id) => <button key={id} type="button" onClick={() => setSelectedId(id)} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${selectedId === id ? 'border-gold/50 bg-gold/5 text-sand' : 'border-line text-muted hover:text-sand'}`}><Moon className="h-3.5 w-3.5" style={{ color: id === 'phobos' ? '#e8ba72' : '#78c8d1' }}/>{bodyById.get(id)?.name ?? id}</button>)}<button type="button" onClick={() => setSelectedId('mars')} className={`rounded-lg border px-3 py-2 text-xs ${selectedId === 'mars' ? 'border-mars/40 text-mars' : 'border-line text-muted'}`}>Mars</button></div>
-      {loadingMars && marsTracks.length === 0 ? <div className="flex min-h-80 items-center justify-center rounded-2xl border border-line bg-void text-sm text-muted"><LoaderCircle className="mr-2 h-4 w-4 animate-spin text-gold"/>Requesting Mars-centered moon trajectories…</div> : <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]"><MapErrorBoundary label="Mars system visualization"><MarsSystemViewer tracks={marsTracks} epoch={systemEpoch} selectedId={selectedId} onSelect={selectMarsBody} resetNonce={homeNonce} onReset={() => setHomeNonce((n) => n + 1)}/></MapErrorBoundary>{selectedBody ? <div className="space-y-3"><CelestialBodyInfoPanel body={selectedBody} track={marsTracks.find((track) => track.target === selectedId)} centerName="Mars"/>{selectedId === 'phobos' || selectedId === 'deimos' ? <div className="rounded-xl border border-line bg-panel p-4"><p className="font-mono text-[9px] tracking-widest text-gold uppercase">Available imagery</p><p className="mt-2 text-[10px] leading-relaxed text-muted">This build uses an illustrative untextured marker; no surface texture is presented as imagery.</p><a className="mt-2 inline-block text-[10px] text-gold hover:text-sand" href={`https://images.nasa.gov/search?q=${encodeURIComponent(selectedBody.name)}`} target="_blank" rel="noreferrer">Search NASA Image and Video Library ↗</a></div> : null}<button type="button" onClick={showOverview} className="flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm text-sand hover:bg-panel-alt"><ArrowLeft className="h-4 w-4"/>Back to Solar System</button></div> : null}</div>}
+      {loadingMars && marsTracks.length === 0 && !demo ? <div className="flex min-h-80 items-center justify-center rounded-2xl border border-line bg-void text-sm text-muted"><LoaderCircle className="mr-2 h-4 w-4 animate-spin text-gold"/>Requesting Mars-centered moon trajectories…</div> : <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]"><MapErrorBoundary label="Mars system visualization"><MarsSystemViewer tracks={displayedMarsTracks} epoch={systemEpoch} selectedId={selectedId} onSelect={selectMarsBody} resetNonce={homeNonce} onReset={() => setHomeNonce((n) => n + 1)}/></MapErrorBoundary>{displaySelectedBody ? <div className="space-y-3"><CelestialBodyInfoPanel body={displaySelectedBody} track={displayedMarsTracks.find((track) => track.target === selectedId)} centerName="Mars"/><button type="button" onClick={showOverview} className="flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm text-sand hover:bg-panel-alt"><ArrowLeft className="h-4 w-4"/>Back to Solar System</button></div> : null}</div>}
       {marsTracks.length ? <AstronomyDataStatus tracks={marsTracks}/> : null}{marsError ? <p role="alert" className="rounded-lg border border-warn/30 p-3 text-xs text-warn">Mars-system ephemeris status: {marsError}</p> : null}
       <p className="text-[10px] leading-relaxed text-muted">Mars-system frame: Mars-centered vectors with the same ECLIPTIC/ICRF axes and UT epoch. Moon paths use 48 hours of Horizons samples; chronological order and returned velocity vectors indicate orbital direction. Sun and Earth are shown as distances and state-vector context, not plotted at the moon-view scale.</p>
     </>}

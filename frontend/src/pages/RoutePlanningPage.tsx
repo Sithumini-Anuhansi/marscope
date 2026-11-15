@@ -27,12 +27,14 @@ function RouteMap({
   points,
   result,
   selectedRouteId,
+  demo,
   onMapPoint,
 }: {
   picking: Target | null
   points: Partial<Record<Target, MarsRoutePoint>>
   result: RoutePlanResponse | null
   selectedRouteId: string | null
+  demo: boolean
   onMapPoint: (point: MarsRoutePoint) => void
 }) {
   const imageryProvider = useMemo(() => {
@@ -58,6 +60,7 @@ function RouteMap({
           }} />
         )))}
         {routes.flatMap((route) => route.encountered_hazards.map((hazard, index) => <Entity key={`${route.route_id}-hazard-${index}`} name="Policy-classified route hazard" position={Cartesian3.fromDegrees(hazard.longitude_deg, planetocentricToGeodeticLatitude(hazard.latitude_deg), 0, Ellipsoid.MARS)} point={{ pixelSize: 10, color: Color.RED, outlineColor: Color.BLACK, outlineWidth: 2 }} />))}
+        {demo && points.start && points.destination ? <Entity name="Illustrative demo traverse · not a calculated route" polyline={{ positions: [[points.start.longitude_deg,points.start.latitude_deg],[139, -4.25],[points.destination.longitude_deg,points.destination.latitude_deg]].map(([lon,lat])=>Cartesian3.fromDegrees(lon,planetocentricToGeodeticLatitude(lat),0,Ellipsoid.MARS)), width:4, material:Color.fromCssColorString('#f0ad58').withAlpha(.9), clampToGround:true }} /> : null}
         <CameraFlyTo destination={Cartesian3.fromDegrees(0, 10, 16_000_000, Ellipsoid.MARS)} duration={0} once />
         <RouteMapClick picking={picking} onMapPoint={onMapPoint} />
       </Viewer>
@@ -111,6 +114,7 @@ export function RoutePlanningPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [demo, setDemo] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -137,6 +141,7 @@ export function RoutePlanningPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (demo) { setError('Demo endpoints are illustrative only. Stop demo to request a real route from available terrain data.'); return }
     setError(null)
     setResult(null)
     setSelectedRouteId(null)
@@ -176,6 +181,7 @@ export function RoutePlanningPage() {
   }
 
   function reset() {
+    setDemo(false)
     setPoints({})
     setResult(null)
     setSelectedRouteId(null)
@@ -187,10 +193,20 @@ export function RoutePlanningPage() {
   const selectedRoute = routes.find((route) => route.route_id === selectedRouteId) ?? null
   const inputClass = 'mt-1 block w-full rounded-lg border border-line bg-void px-3 py-2 font-mono text-xs text-sand outline-none focus:border-gold'
 
+  function toggleDemo() {
+    setDemo((current) => {
+      if (current) { setPoints({}); setResult(null); setSelectedRouteId(null); return false }
+      setResult(null)
+      setPoints({ start:{ latitude_deg:-4.5, longitude_deg:137.4, latitude_type:'planetocentric', longitude_direction:'positive-east' }, destination:{ latitude_deg:-4.1, longitude_deg:138.1, latitude_type:'planetocentric', longitude_direction:'positive-east' } })
+      return true
+    })
+  }
+
   return <div className="mx-auto flex max-w-7xl flex-col gap-5">
-    <header><p className="font-mono text-[10px] tracking-[0.26em] text-gold uppercase">Navigation · terrain-cost candidates</p><h1 className="mt-1 text-2xl font-semibold text-sand md:text-3xl">Route planning</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">Select points on the Mars globe and request A* candidates from processed terrain. The current global MOLA sample is about 14.8 km per cell; it is too coarse for local EVA navigation, and missing hazards never mean safe terrain.</p></header>
+    <header className="flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[10px] tracking-[0.26em] text-gold uppercase">Navigation · terrain-cost candidates</p><h1 className="mt-1 text-2xl font-semibold text-sand md:text-3xl">Route planning</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">Select points on the Mars globe and request A* candidates from processed terrain. The current global MOLA sample is about 14.8 km per cell; it is too coarse for local EVA navigation, and missing hazards never mean safe terrain.</p></div><button type="button" onClick={toggleDemo} className="rounded-lg border border-line px-3 py-2 text-xs text-sand">{demo?'Stop demo':'Start demo'}</button></header>
+    {demo ? <div role="status" className="rounded-xl border border-warn/30 bg-warn/5 p-3 text-xs text-warn">DEMO ONLY · Sample endpoints and the line are illustrative. They do not use terrain rasters, hazard rules, or the route service. Real route calculation needs reachable processed terrain and backend data access.</div> : null}
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.75fr)]">
-      <RouteMap picking={picking} points={points} result={result} selectedRouteId={selectedRouteId} onMapPoint={applyMapPoint} />
+      <RouteMap picking={picking} points={points} result={result} selectedRouteId={selectedRouteId} demo={demo} onMapPoint={applyMapPoint} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
         <div className="flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold text-sand">Mission route inputs</h2><p className="mt-1 text-[10px] text-muted">Select a field, then click Mars; manual coordinates are also supported.</p></div><RouteIcon className="h-4 w-4 text-gold" aria-hidden="true" /></div>
         {(['start', 'destination'] as const).map((target) => (

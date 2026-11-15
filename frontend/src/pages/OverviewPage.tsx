@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ActivityTimeline } from '../components/dashboard/ActivityTimeline'
 import { CrewStatus } from '../components/dashboard/CrewStatus'
 import { DashboardCard } from '../components/dashboard/DashboardCard'
@@ -9,11 +10,13 @@ import { MarsMapPreview } from '../components/map/MarsMapPreview'
 import { SAMPLE_OVERVIEW } from '../data/sampleOverview'
 
 export function OverviewPage() {
+  const [demo, setDemo] = useState(false)
   const snapshot = SAMPLE_OVERVIEW
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
         <p className="font-mono text-[11px] tracking-[0.28em] text-gold uppercase">
           Mission control
         </p>
@@ -22,7 +25,10 @@ export function OverviewPage() {
           Dashboard for ANORA surface operations. Metrics on this page use clearly labeled sample
           data until the FastAPI services and scientific datasets are connected.
         </p>
+        </div>
+        <button type="button" onClick={() => setDemo((value) => !value)} className="rounded-lg border border-line px-3 py-2 text-xs text-sand">{demo ? 'Stop demo' : 'Start demo'}</button>
       </div>
+      {demo ? <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 text-xs text-amber-100">DEMO ONLY · This dashboard uses illustrative mission, hazard, resource, and observation samples. No real mission telemetry or hazard detections are connected here. Real data access is limited to currently configured sources.</p> : null}
 
       <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <MarsMapPreview markers={snapshot.mapMarkers} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Crosshair, MapPin, Route as RouteIcon } from 'lucide-react'
+import { ArrowUpRight, Crosshair, MapPin, Route as RouteIcon, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { MapErrorBoundary } from '../components/map/MapErrorBoundary'
 import { MarsGlobe } from '../components/map/MarsGlobe'
@@ -25,6 +25,7 @@ function formatPoint(point: MarsPoint | null): string {
 export function MarsExplorerPage() {
   const [start, setStart] = useState<MarsPoint | null>(null)
   const [destination, setDestination] = useState<MarsPoint | null>(null)
+  const [selectedMapPoint, setSelectedMapPoint] = useState<MarsPoint | null>(null)
   const [selecting, setSelecting] = useState<RouteEndpoint | null>(null)
   const [studyAreaFocused, setStudyAreaFocused] = useState(false)
   const [scienceFocus, setScienceFocus] = useState<MarsPoint | null>(null)
@@ -34,6 +35,7 @@ export function MarsExplorerPage() {
   const [archiveError, setArchiveError] = useState<string | null>(null)
   const [meda, setMeda] = useState<MedaArchiveResponse | null>(null)
   const [scienceDemo, setScienceDemo] = useState<ScienceDemoResponse | null>(null)
+  const [showScienceDemo, setShowScienceDemo] = useState(false)
   const [astrobiology, setAstrobiology] = useState<AstrobiologyMapsResponse | null>(null)
   const [astrobiologyError, setAstrobiologyError] = useState<string | null>(null)
   const [showHabitabilityMap, setShowHabitabilityMap] = useState(true)
@@ -41,7 +43,7 @@ export function MarsExplorerPage() {
   const [showPresentLifeMap, setShowPresentLifeMap] = useState(false)
   const [showSettlementMap, setShowSettlementMap] = useState(false)
   const selectedPoint = selecting === 'start' ? start : destination
-  const focusLocation = useMemo(() => selecting ? selectedPoint : scienceFocus ?? (studyAreaFocused ? BOXWORK_STUDY_POINT : destination ?? start), [selecting, selectedPoint, scienceFocus, studyAreaFocused, destination, start])
+  const focusLocation = useMemo(() => selecting ? selectedPoint : selectedMapPoint ?? scienceFocus ?? (studyAreaFocused ? BOXWORK_STUDY_POINT : destination ?? start), [selecting, selectedPoint, selectedMapPoint, scienceFocus, studyAreaFocused, destination, start])
 
   const visibleScienceFeatures = useMemo(() => {
     if (!astrobiology) return [] as AstrobiologyEvidenceFeature[]
@@ -71,6 +73,7 @@ export function MarsExplorerPage() {
   function onSurfaceSelect(point: MarsPoint) {
     setStudyAreaFocused(false)
     setScienceFocus(null)
+    setSelectedMapPoint(point)
     setArchivePoint({ ...point, latitudeDeg: geodeticToPlanetocentricLatitude(point.latitudeDeg) })
     if (selecting === 'start') setStart(point)
     if (selecting === 'destination') setDestination(point)
@@ -154,6 +157,7 @@ export function MarsExplorerPage() {
         </div>
 
         <aside className="flex flex-col gap-3">
+          {selectedMapPoint ? <section className="rounded-xl border border-gold/35 bg-gold/5 p-3" aria-live="polite"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[9px] tracking-widest text-gold uppercase">Selected Mars point</p><h2 className="mt-1 text-xs font-semibold text-sand">{selectedMapPoint.latitudeDeg.toFixed(4)}° lat · {selectedMapPoint.longitudeDeg.toFixed(4)}° E</h2></div><button type="button" aria-label="Dismiss selected point details" onClick={() => setSelectedMapPoint(null)} className="rounded p-1 text-muted hover:text-sand"><X size={14}/></button></div><p className="mt-2 text-[10px] leading-relaxed text-muted">A point on the Mars surface has been selected. Nearby orbital archive products are searched within 20 km and listed below when available. A map click alone does not identify a hazard, landing zone, or safe route.</p></section> : null}
           <section className="rounded-2xl border border-line bg-panel p-4">
             <p className="font-mono text-[10px] tracking-[0.2em] text-gold uppercase">Reference science objective</p>
             <h2 className="mt-1 text-base font-semibold text-sand">Gale Crater · Mount Sharp boxwork</h2>
@@ -204,16 +208,15 @@ export function MarsExplorerPage() {
         </aside>
       </section>
 
-      {scienceDemo ? <section aria-labelledby="demo-science-heading" className="rounded-2xl border-2 border-amber-500/70 bg-[#201606] p-4 md:p-5">
+      {scienceDemo ? <section aria-labelledby="demo-science-heading" className="rounded-2xl border border-amber-500/40 bg-[#201606]/75 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-[10px] tracking-[0.2em] text-amber-300 uppercase">Demonstration only · simulated examples</p>
+            <p className="font-mono text-[10px] tracking-[0.2em] text-amber-300 uppercase">Optional feature demonstration</p>
             <h2 id="demo-science-heading" className="mt-1 text-lg font-semibold text-sand">Science-source demo gallery</h2>
-            <p className="mt-1 max-w-4xl text-[11px] leading-relaxed text-amber-100">{scienceDemo.mode}. Values below are illustrative placeholders, not NASA observations, measurements, or model output. Demo records are excluded from hazard, risk, and route calculations.</p>
           </div>
-          <span className="rounded-lg border border-amber-300/50 px-2.5 py-1.5 font-mono text-[9px] text-amber-200">NOT FOR SCIENTIFIC USE</span>
+          <button type="button" aria-expanded={showScienceDemo} onClick={() => setShowScienceDemo((value) => !value)} className={`rounded-lg border px-3 py-2 text-xs ${showScienceDemo ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-line text-sand hover:bg-panel-alt'}`}>{showScienceDemo ? 'Stop demo' : 'Start demo'}</button>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {showScienceDemo ? <><p role="status" className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/35 p-2 text-[10px] leading-relaxed text-amber-100">DEMO ONLY · {scienceDemo.mode}. Values below are synthetic examples, not NASA observations or model output. They are excluded from hazard, risk, and route calculations.</p><div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {scienceDemo.items.map((item) => <article key={item.id} className="rounded-xl border border-amber-500/30 bg-[#100c07] p-3">
             <div className="flex items-start justify-between gap-2"><h3 className="text-xs font-semibold text-sand">{item.name}</h3><span className="shrink-0 rounded bg-amber-950 px-1.5 py-0.5 font-mono text-[8px] text-amber-200">DEMO</span></div>
             <p className="mt-2 font-mono text-[9px] text-amber-300">{item.mode}</p>
@@ -221,7 +224,7 @@ export function MarsExplorerPage() {
             <p className="mt-2 text-[9px] leading-relaxed text-muted">{item.explanation}</p>
             <a href={item.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[9px] text-gold underline">Open dataset/topic reference <ArrowUpRight className="h-3 w-3" /></a>
           </article>)}
-        </div>
+        </div></> : <p className="mt-2 text-[10px] text-muted">Start the demonstration to browse clearly labeled synthetic examples.</p>}
       </section> : null}
 
       <section className="rounded-2xl border border-line bg-panel p-4 md:p-5">
@@ -311,6 +314,7 @@ interface AstrobiologyMapPanelProps {
 
 function AstrobiologyMapPanel({ data, error, demoItems, showHabitability, showPastLife, showPresentLife, showSettlement,
   onToggleHabitability, onTogglePastLife, onTogglePresentLife, onToggleSettlement, onFocus }: AstrobiologyMapPanelProps) {
+  const [showDemos, setShowDemos] = useState(false)
   const records = [
     ...(showHabitability ? data?.habitability.features ?? [] : []),
     ...(showPastLife ? data?.biosignatures.past_life.features ?? [] : []),
@@ -367,14 +371,13 @@ function AstrobiologyMapPanel({ data, error, demoItems, showHabitability, showPa
       {!records.length && (showHabitability || showPastLife || showSettlement) && data ? <p className="rounded-lg border border-line bg-void p-2 text-[9px] text-muted">No records are available for the selected layer.</p> : null}
     </div>
     {data ? <p className="mt-3 text-[8px] leading-relaxed text-muted">{data.separation_note} {data.source_note}</p> : null}
-    {visibleDemos.length ? <section className="mt-3 rounded-xl border-2 border-amber-500/60 bg-[#201606] p-3" aria-label="Synthetic demonstration records">
-      <p className="font-mono text-[9px] font-semibold tracking-wide text-amber-300 uppercase">DEMO ONLY · synthetic scenarios · not plotted</p>
-      <p className="mt-1 text-[8px] leading-relaxed text-amber-100">These values are examples for the interface. They have no Mars coordinates and are not used by real evidence records, scores, hazards, or routes.</p>
-      <div className="mt-2 space-y-2">{visibleDemos.map((item) => <article key={item.id} className="rounded-lg border border-amber-500/30 bg-black/30 p-2">
+    {visibleDemos.length ? <section className="mt-3 rounded-xl border border-amber-500/35 bg-[#201606]/70 p-3" aria-label="Synthetic demonstration records">
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-mono text-[9px] font-semibold tracking-wide text-amber-300 uppercase">Optional synthetic examples</p><p className="mt-1 text-[8px] text-muted">Not plotted on Mars.</p></div><button type="button" aria-expanded={showDemos} onClick={() => setShowDemos((value) => !value)} className={`rounded-lg border px-2.5 py-1.5 text-[9px] ${showDemos ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-line text-sand hover:bg-panel-alt'}`}>{showDemos ? 'Stop demo' : 'Start demo'}</button></div>
+      {showDemos ? <><p role="status" className="mt-2 rounded-lg border border-amber-500/30 bg-amber-950/35 p-2 text-[8px] leading-relaxed text-amber-100">DEMO ONLY · These examples have no Mars coordinates and are not used by evidence records, scores, hazards, or routes.</p><div className="mt-2 space-y-2">{visibleDemos.map((item) => <article key={item.id} className="rounded-lg border border-amber-500/30 bg-black/30 p-2">
         <h4 className="text-[9px] font-semibold text-sand">{item.name} <span className="font-mono text-amber-300">DEMO</span></h4>
         <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words font-mono text-[8px] leading-relaxed text-amber-100">{JSON.stringify(item.sample, null, 2)}</pre>
         <p className="mt-1 text-[8px] leading-relaxed text-muted">{item.explanation}</p>
-      </article>)}</div>
+      </article>)}</div></> : <p className="mt-2 text-[9px] text-muted">Start demo to view synthetic examples for the selected evidence layer.</p>}
     </section> : null}
   </section>
 }
