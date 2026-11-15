@@ -2,13 +2,15 @@
 
 ### Interplanetary Survival and Mars Exploration Companion
 
+![Marscope](images/marscope.png)
+
 **Explore the unknown. Understand your surroundings. Plan the next step.**
 
 Developed by **Team ANORA** for the NASA Space Apps Challenge.
 
 ## Project links
 
-- **Project repository:** [github.com/Sithumini-Anuhansi/marscope](https://github.com/Sithumini-Anuhansi/marscope)
+- **Project demo video:** 
 - **Seven-slide project demonstration:** [Google Slides](https://docs.google.com/presentation/d/1dts4-IvVR_BkmmEoPLKNQgvCVmyoqI0A5KdsTGIEVDY/edit?usp=sharing)
 
 ## Summary
@@ -116,5 +118,7 @@ Open the local URL printed by Vite (normally `http://localhost:5173`). The API d
 NASA does not endorse any non-U.S. Government entity and is not responsible for information contained on non-U.S. Government websites. For non-U.S. Government websites, participants must comply with any data use parameters of that specific website. NASA PDS datasets may be served through university-hosted PDS nodes; see the individual source for applicable access and data-use terms. External services are subject to their providers' availability and terms.
 
 ## Team
+
+![Anora](images/anora.jpeg)
 
 **Team ANORA** — Sithumini Anuhansi, Pabasara Ranasinghe, Pavani Perera, and Kavindu Vishwajith.
