@@ -1,4 +1,4 @@
-import marscopeLogo from '../../assets/branding/marscope-logo.png'
+import marscopeLogo from '../../assets/branding/marscope-logo-ai-watermarked.png'
 
 interface BrandMarkProps {
   compact?: boolean
@@ -10,7 +10,7 @@ export function BrandMark({ compact = true }: BrandMarkProps) {
       <div className="overflow-hidden rounded-lg border border-line bg-void">
         <img
           src={marscopeLogo}
-          alt="MARSCOPE"
+          alt="MARSCOPE logo, AI-generated"
           className={
             compact
               ? 'block h-32 w-full object-cover object-[center_58%]'
