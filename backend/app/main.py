@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     return_feasibility,
     risk,
     routes,
+    solar_system,
     survival,
 )
 
@@ -39,6 +40,7 @@ app.include_router(observations.router, prefix="/api/v1")
 app.include_router(routes.router, prefix="/api/v1")
 app.include_router(survival.router, prefix="/api/v1")
 app.include_router(return_feasibility.router, prefix="/api/v1")
+app.include_router(solar_system.router, prefix="/api/v1")
 
 
 @app.get("/health", include_in_schema=False)
