@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     return_feasibility,
     risk,
     routes,
+    science,
     solar_system,
     survival,
 )
@@ -38,6 +39,7 @@ app.include_router(ai.router, prefix="/api/v1")
 app.include_router(crew.router, prefix="/api/v1")
 app.include_router(observations.router, prefix="/api/v1")
 app.include_router(routes.router, prefix="/api/v1")
+app.include_router(science.router, prefix="/api/v1")
 app.include_router(survival.router, prefix="/api/v1")
 app.include_router(return_feasibility.router, prefix="/api/v1")
 app.include_router(solar_system.router, prefix="/api/v1")
