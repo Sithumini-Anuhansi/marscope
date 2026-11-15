@@ -88,10 +88,16 @@ export function RoutePlanningPage() {
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<RoutePlannerStatus | null>(null)
   const [points, setPoints] = useState<Partial<Record<Target, MarsRoutePoint>>>(() => {
-    const latitude = Number(searchParams.get('start_latitude_deg'))
-    const longitude = Number(searchParams.get('start_longitude_deg'))
-    if (!searchParams.has('start_latitude_deg') || !searchParams.has('start_longitude_deg') || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return {}
-    return { start: { latitude_deg: geodeticToPlanetocentricLatitude(latitude), longitude_deg: longitude, latitude_type: 'planetocentric', longitude_direction: 'positive-east' } }
+    const initial: Partial<Record<Target, MarsRoutePoint>> = {}
+    for (const target of ['start', 'destination'] as const) {
+      const latitudeKey = `${target}_latitude_deg`
+      const longitudeKey = `${target}_longitude_deg`
+      const latitude = Number(searchParams.get(latitudeKey))
+      const longitude = Number(searchParams.get(longitudeKey))
+      if (!searchParams.has(latitudeKey) || !searchParams.has(longitudeKey) || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) continue
+      initial[target] = { latitude_deg: geodeticToPlanetocentricLatitude(latitude), longitude_deg: longitude, latitude_type: 'planetocentric', longitude_direction: 'positive-east' }
+    }
+    return initial
   })
   const [picking, setPicking] = useState<Target | null>(null)
   const [maximumResolution, setMaximumResolution] = useState('5')
