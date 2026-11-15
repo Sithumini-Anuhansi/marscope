@@ -3,6 +3,7 @@ import { ArrowUpRight, Crosshair, MapPin, Route as RouteIcon, X } from 'lucide-r
 import { Link } from 'react-router-dom'
 import { MapErrorBoundary } from '../components/map/MapErrorBoundary'
 import { MarsGlobe } from '../components/map/MarsGlobe'
+import { DemoSampleVisualization } from '../components/common/DemoSampleVisualization'
 import { getMedaArchiveIndex, getPlanetaryArchiveProducts, getScienceDemoRecords } from '../services/planetaryArchiveService'
 import { getAstrobiologyMaps } from '../services/astrobiologyService'
 import type { AstrobiologyEvidenceFeature, AstrobiologyMapsResponse } from '../types/astrobiology'
@@ -35,7 +36,7 @@ export function MarsExplorerPage() {
   const [archiveError, setArchiveError] = useState<string | null>(null)
   const [meda, setMeda] = useState<MedaArchiveResponse | null>(null)
   const [scienceDemo, setScienceDemo] = useState<ScienceDemoResponse | null>(null)
-  const [showScienceDemo, setShowScienceDemo] = useState(false)
+  const [showScienceDemo, setShowScienceDemo] = useState(true)
   const [astrobiology, setAstrobiology] = useState<AstrobiologyMapsResponse | null>(null)
   const [astrobiologyError, setAstrobiologyError] = useState<string | null>(null)
   const [showHabitabilityMap, setShowHabitabilityMap] = useState(true)
@@ -142,7 +143,7 @@ export function MarsExplorerPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <section id="marswalk-map" className="scroll-mt-24 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="relative min-h-[34rem] overflow-hidden rounded-2xl border border-line bg-[#070605] xl:min-h-[42rem]">
           <MapErrorBoundary>
             <MarsGlobe
@@ -158,7 +159,7 @@ export function MarsExplorerPage() {
 
         <aside className="flex flex-col gap-3">
           {selectedMapPoint ? <section className="rounded-xl border border-gold/35 bg-gold/5 p-3" aria-live="polite"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[9px] tracking-widest text-gold uppercase">Selected Mars point</p><h2 className="mt-1 text-xs font-semibold text-sand">{selectedMapPoint.latitudeDeg.toFixed(4)}° lat · {selectedMapPoint.longitudeDeg.toFixed(4)}° E</h2></div><button type="button" aria-label="Dismiss selected point details" onClick={() => setSelectedMapPoint(null)} className="rounded p-1 text-muted hover:text-sand"><X size={14}/></button></div><p className="mt-2 text-[10px] leading-relaxed text-muted">A point on the Mars surface has been selected. Nearby orbital archive products are searched within 20 km and listed below when available. A map click alone does not identify a hazard, landing zone, or safe route.</p></section> : null}
-          <section className="rounded-2xl border border-line bg-panel p-4">
+          <section id="study-area" className="scroll-mt-24 rounded-2xl border border-line bg-panel p-4">
             <p className="font-mono text-[10px] tracking-[0.2em] text-gold uppercase">Reference science objective</p>
             <h2 className="mt-1 text-base font-semibold text-sand">Gale Crater · Mount Sharp boxwork</h2>
             <p className="mt-2 text-xs leading-relaxed text-muted">
@@ -208,7 +209,7 @@ export function MarsExplorerPage() {
         </aside>
       </section>
 
-      {scienceDemo ? <section aria-labelledby="demo-science-heading" className="rounded-2xl border border-amber-500/40 bg-[#201606]/75 p-4 md:p-5">
+      {scienceDemo ? <section id="science-demos" aria-labelledby="demo-science-heading" className="rounded-2xl border border-amber-500/40 bg-[#201606]/75 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-mono text-[10px] tracking-[0.2em] text-amber-300 uppercase">Optional feature demonstration</p>
@@ -220,14 +221,14 @@ export function MarsExplorerPage() {
           {scienceDemo.items.map((item) => <article key={item.id} className="rounded-xl border border-amber-500/30 bg-[#100c07] p-3">
             <div className="flex items-start justify-between gap-2"><h3 className="text-xs font-semibold text-sand">{item.name}</h3><span className="shrink-0 rounded bg-amber-950 px-1.5 py-0.5 font-mono text-[8px] text-amber-200">DEMO</span></div>
             <p className="mt-2 font-mono text-[9px] text-amber-300">{item.mode}</p>
-            <pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-black/40 p-2 font-mono text-[9px] leading-relaxed text-sand">{JSON.stringify(item.sample, null, 2)}</pre>
+            <DemoSampleVisualization sample={item.sample}/>
             <p className="mt-2 text-[9px] leading-relaxed text-muted">{item.explanation}</p>
             <a href={item.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[9px] text-gold underline">Open dataset/topic reference <ArrowUpRight className="h-3 w-3" /></a>
           </article>)}
         </div></> : <p className="mt-2 text-[10px] text-muted">Start the demonstration to browse clearly labeled synthetic examples.</p>}
       </section> : null}
 
-      <section className="rounded-2xl border border-line bg-panel p-4 md:p-5">
+      <section id="pds-products" className="scroll-mt-24 rounded-2xl border border-line bg-panel p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-mono text-[10px] tracking-[0.2em] text-gold uppercase">Live planetary archive query</p>
@@ -265,7 +266,7 @@ export function MarsExplorerPage() {
         </> : null}
       </section>
 
-      <section className="grid gap-4 rounded-2xl border border-line bg-panel p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)] md:p-5">
+      <section id="research-maps" className="scroll-mt-24 grid items-start gap-4 rounded-2xl border border-line bg-panel p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)] md:p-5">
         <div className="overflow-hidden rounded-xl border border-line bg-void">
           <img
             src={NASA_BOXWORK_IMAGE}
@@ -314,7 +315,7 @@ interface AstrobiologyMapPanelProps {
 
 function AstrobiologyMapPanel({ data, error, demoItems, showHabitability, showPastLife, showPresentLife, showSettlement,
   onToggleHabitability, onTogglePastLife, onTogglePresentLife, onToggleSettlement, onFocus }: AstrobiologyMapPanelProps) {
-  const [showDemos, setShowDemos] = useState(false)
+  const [showDemos, setShowDemos] = useState(true)
   const records = [
     ...(showHabitability ? data?.habitability.features ?? [] : []),
     ...(showPastLife ? data?.biosignatures.past_life.features ?? [] : []),
@@ -375,7 +376,7 @@ function AstrobiologyMapPanel({ data, error, demoItems, showHabitability, showPa
       <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-mono text-[9px] font-semibold tracking-wide text-amber-300 uppercase">Optional synthetic examples</p><p className="mt-1 text-[8px] text-muted">Not plotted on Mars.</p></div><button type="button" aria-expanded={showDemos} onClick={() => setShowDemos((value) => !value)} className={`rounded-lg border px-2.5 py-1.5 text-[9px] ${showDemos ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-line text-sand hover:bg-panel-alt'}`}>{showDemos ? 'Stop demo' : 'Start demo'}</button></div>
       {showDemos ? <><p role="status" className="mt-2 rounded-lg border border-amber-500/30 bg-amber-950/35 p-2 text-[8px] leading-relaxed text-amber-100">DEMO ONLY · These examples have no Mars coordinates and are not used by evidence records, scores, hazards, or routes.</p><div className="mt-2 space-y-2">{visibleDemos.map((item) => <article key={item.id} className="rounded-lg border border-amber-500/30 bg-black/30 p-2">
         <h4 className="text-[9px] font-semibold text-sand">{item.name} <span className="font-mono text-amber-300">DEMO</span></h4>
-        <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words font-mono text-[8px] leading-relaxed text-amber-100">{JSON.stringify(item.sample, null, 2)}</pre>
+        <DemoSampleVisualization sample={item.sample}/>
         <p className="mt-1 text-[8px] leading-relaxed text-muted">{item.explanation}</p>
       </article>)}</div></> : <p className="mt-2 text-[9px] text-muted">Start demo to view synthetic examples for the selected evidence layer.</p>}
     </section> : null}

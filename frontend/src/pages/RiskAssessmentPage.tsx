@@ -158,8 +158,8 @@ export function RiskAssessmentPage() {
         </p>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
-        <div className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
+      <section id="risk-inputs" className="scroll-mt-24 grid items-start gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
+        <div id="terrain-image" className="scroll-mt-24 rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
           <div className="flex items-center gap-2">
             <ImageUp className="h-4 w-4 text-gold" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-sand">AI4MARS terrain classification</h2>
@@ -174,7 +174,7 @@ export function RiskAssessmentPage() {
           {terrainClassification ? <p className="mt-3 text-[11px] text-muted" role="status">{terrainClassification.assessment_status}: {terrainClassification.reason ?? terrainClassification.explanation}</p> : null}
         </div>
 
-        <div className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
+        <div id="risk-readiness" className="scroll-mt-24 rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-gold" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-sand">Hybrid AI readiness</h2>
@@ -191,7 +191,7 @@ export function RiskAssessmentPage() {
       <ScienceDemoPanel sections={['terrain', 'environmental-hazards', 'atmosphere', 'habitability', 'biosignatures']} title="Example inputs for the experimental models" />
 
       {terrainClassification?.mask_png_base64 ? (
-        <section className="grid gap-4 rounded-2xl border border-line bg-panel/80 p-4 md:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.2fr)] md:p-5">
+        <section id="terrain-mask" className="scroll-mt-24 grid items-start gap-4 rounded-2xl border border-line bg-panel/80 p-4 md:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.2fr)] md:p-5">
           <img className="max-h-72 w-full rounded-lg border border-line bg-void object-contain" src={`data:image/png;base64,${terrainClassification.mask_png_base64}`} alt="Predicted AI4MARS terrain class mask" />
           <div>
             <p className="font-mono text-[10px] text-gold uppercase">{terrainClassification.model_version} · {terrainClassification.dominant_terrain_class}</p>
@@ -282,7 +282,7 @@ export function RiskAssessmentPage() {
       </section>
 
       {result ? (
-        <section className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
+        <section id="risk-results" className="scroll-mt-24 rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
             <div>
               <p className="font-mono text-[10px] tracking-[0.2em] text-gold uppercase">{result.method.replaceAll('-', ' ')}</p>

@@ -10,7 +10,7 @@ import { MarsMapPreview } from '../components/map/MarsMapPreview'
 import { SAMPLE_OVERVIEW } from '../data/sampleOverview'
 
 export function OverviewPage() {
-  const [demo, setDemo] = useState(false)
+  const [demo, setDemo] = useState(true)
   const snapshot = SAMPLE_OVERVIEW
 
   return (

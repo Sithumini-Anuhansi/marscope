@@ -100,6 +100,10 @@ export function RoutePlanningPage() {
       if (!searchParams.has(latitudeKey) || !searchParams.has(longitudeKey) || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) continue
       initial[target] = { latitude_deg: geodeticToPlanetocentricLatitude(latitude), longitude_deg: longitude, latitude_type: 'planetocentric', longitude_direction: 'positive-east' }
     }
+    if (Object.keys(initial).length === 0) {
+      initial.start = { latitude_deg: -4.5, longitude_deg: 137.4, latitude_type: 'planetocentric', longitude_direction: 'positive-east' }
+      initial.destination = { latitude_deg: -4.1, longitude_deg: 138.1, latitude_type: 'planetocentric', longitude_direction: 'positive-east' }
+    }
     return initial
   })
   const [picking, setPicking] = useState<Target | null>(null)
@@ -114,7 +118,7 @@ export function RoutePlanningPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [demo, setDemo] = useState(false)
+  const [demo, setDemo] = useState(() => !searchParams.has('start_latitude_deg') && !searchParams.has('destination_latitude_deg'))
 
   useEffect(() => {
     const controller = new AbortController()
@@ -205,9 +209,9 @@ export function RoutePlanningPage() {
   return <div className="mx-auto flex max-w-7xl flex-col gap-5">
     <header className="flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[10px] tracking-[0.26em] text-gold uppercase">Navigation · terrain-cost candidates</p><h1 className="mt-1 text-2xl font-semibold text-sand md:text-3xl">Route planning</h1><p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">Select points on the Mars globe and request A* candidates from processed terrain. The current global MOLA sample is about 14.8 km per cell; it is too coarse for local EVA navigation, and missing hazards never mean safe terrain.</p></div><button type="button" onClick={toggleDemo} className="rounded-lg border border-line px-3 py-2 text-xs text-sand">{demo?'Stop demo':'Start demo'}</button></header>
     {demo ? <div role="status" className="rounded-xl border border-warn/30 bg-warn/5 p-3 text-xs text-warn">DEMO ONLY · Sample endpoints and the line are illustrative. They do not use terrain rasters, hazard rules, or the route service. Real route calculation needs reachable processed terrain and backend data access.</div> : null}
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.75fr)]">
+    <div id="route-map" className="scroll-mt-24 grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.75fr)]">
       <RouteMap picking={picking} points={points} result={result} selectedRouteId={selectedRouteId} demo={demo} onMapPoint={applyMapPoint} />
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
+      <form id="route-inputs" onSubmit={handleSubmit} className="scroll-mt-24 flex flex-col gap-4 rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
         <div className="flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold text-sand">Mission route inputs</h2><p className="mt-1 text-[10px] text-muted">Select a field, then click Mars; manual coordinates are also supported.</p></div><RouteIcon className="h-4 w-4 text-gold" aria-hidden="true" /></div>
         {(['start', 'destination'] as const).map((target) => (
           <section key={target} className="rounded-xl border border-line bg-void/45 p-3">
@@ -224,13 +228,13 @@ export function RoutePlanningPage() {
         <div className="mt-auto grid grid-cols-2 gap-2"><button type="submit" disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2.5 text-xs font-medium text-gold hover:bg-gold/15 disabled:opacity-50">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RouteIcon size={14} />}{loading ? 'Calculating…' : 'Generate candidates'}</button><button type="button" onClick={reset} className="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2.5 text-xs text-muted hover:text-sand"><RotateCcw size={14} />Reset route</button></div>
       </form>
     </div>
-    {result ? <section className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
+    {result ? <section id="route-results" className="scroll-mt-24 rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3"><div><p className="font-mono text-[10px] tracking-widest text-gold uppercase">Route request · {result.status}</p><h2 className="mt-1 text-lg font-semibold text-sand">{result.recommended_route ? 'Terrain-cost route candidates' : 'No route generated'}</h2></div><span className="rounded-full border border-warn/35 px-2.5 py-1 font-mono text-[9px] text-warn uppercase">Decision support only</span></div>
       <p className="mt-3 text-xs leading-relaxed text-muted">{result.risk_summary}</p>
       {result.missing_information.length ? <ul className="mt-3 grid gap-1 text-[10px] text-muted sm:grid-cols-2">{result.missing_information.map((item) => <li key={item}>• {item}</li>)}</ul> : null}
       {routes.length ? <div className="mt-4 grid gap-3 lg:grid-cols-3">{routes.map((route, index) => <button type="button" key={route.route_id} onClick={() => setSelectedRouteId(route.route_id)} className={`rounded-xl border p-3 text-left ${route.route_id === selectedRouteId ? 'border-gold/50 bg-gold/5' : 'border-line bg-void/45'}`}><p className="font-mono text-[9px] uppercase" style={{ color: ROUTE_COLORS[index % ROUTE_COLORS.length] }}>{index === 0 ? 'Recommended objective' : 'Alternative'} · {route.objective.replaceAll('_', ' ')}</p><p className="mt-2 text-lg font-semibold text-sand">{route.distance_km.toFixed(2)} km</p><p className="mt-1 text-[10px] text-muted">relative cost {route.cost_value.toFixed(2)} · {route.waypoint_count} cells</p><dl className="mt-3 grid grid-cols-2 gap-2 text-[9px] text-muted"><div>Mean slope<dd className="font-mono text-sand">{route.terrain_summary.mean_slope_deg.toFixed(2)}°</dd></div><div>Max slope<dd className="font-mono text-sand">{route.terrain_summary.maximum_slope_deg.toFixed(2)}°</dd></div><div>Mean roughness<dd className="font-mono text-sand">{route.terrain_summary.mean_roughness_m.toFixed(1)} m</dd></div><div>Known hazards<dd className="font-mono text-sand">{route.encountered_hazards.length}</dd></div></dl><p className="mt-3 text-[9px] leading-relaxed text-muted">{route.risk_summary}</p></button>)}</div> : null}
       {selectedRoute ? <div className="mt-4 grid gap-3 rounded-xl border border-line bg-void/40 p-3 text-[10px] md:grid-cols-3"><p><span className="text-muted">Selected route:</span> <span className="font-mono text-sand">{selectedRoute.route_id.slice(0, 8)}</span></p><p><span className="text-muted">Source:</span> <span className="text-sand">{result.source?.product_id} · {result.source?.cell_resolution_km.toFixed(3)} km/cell</span></p><p><span className="text-muted">Travel time:</span> <span className="text-sand">Not estimated</span></p></div> : null}
       <div className="mt-4 flex gap-2 rounded-lg border border-warn/30 bg-warn/5 p-3 text-[10px] leading-relaxed text-muted"><AlertTriangle size={14} className="mt-0.5 shrink-0 text-warn" /><p>{result.assumptions.join(' ')} {result.source?.quality}</p></div>
-    </section> : <section className="rounded-2xl border border-dashed border-line bg-panel/40 p-5 text-center"><p className="text-sm font-medium text-sand">No route calculation yet</p><p className="mt-2 text-xs text-muted">Use the map to choose endpoints. If source resolution is too coarse, the API returns unavailable and will not draw a route.</p></section>}
+    </section> : <section id="route-results" className="scroll-mt-24 rounded-2xl border border-dashed border-line bg-panel/40 p-5 text-center"><p className="text-sm font-medium text-sand">No route calculation yet</p><p className="mt-2 text-xs text-muted">Use the map to choose endpoints. If source resolution is too coarse, the API returns unavailable and will not draw a route.</p></section>}
   </div>
 }

@@ -7,7 +7,7 @@ const blankScenario=(n:number):ScenarioInput=>({scenario_id:`scenario-${n}`,name
 const STATUS_LABEL:Record<string,string>={'feasible-under-stated-assumptions':'Feasible under stated assumptions','feasible-with-constraints':'Feasible with constraints','high-risk':'High risk','not-feasible-with-available-resources':'Not feasible with available resources','insufficient-information':'Insufficient information'}
 
 export function ReturnFeasibilityPage(){
- const [scenario,setScenario]=useState<ScenarioInput>(blankScenario(1));const[scenarios,setScenarios]=useState<ScenarioInput[]>([]);const[result,setResult]=useState<ReturnResult|null>(null);const[loading,setLoading]=useState(false);const[error,setError]=useState<string|null>(null);const[demo,setDemo]=useState(false)
+ const [scenario,setScenario]=useState<ScenarioInput>(blankScenario(1));const[scenarios,setScenarios]=useState<ScenarioInput[]>([]);const[result,setResult]=useState<ReturnResult|null>(null);const[loading,setLoading]=useState(false);const[error,setError]=useState<string|null>(null);const[demo,setDemo]=useState(true)
  const change=<K extends keyof ScenarioInput>(key:K,value:ScenarioInput[K])=>setScenario(current=>({...current,[key]:value}))
  const addScenario=()=>{setScenarios(current=>[...current,scenario]);setScenario(blankScenario(scenarios.length+2));setResult(null)}
  const submit=async(event:FormEvent)=>{event.preventDefault();if(demo){setError('The demo scenario is not sent to the live assessment service. Exit demo to submit operator-supplied inputs.');return}setLoading(true);setError(null);try{setResult(await assessReturn(MISSION,[...scenarios,scenario]))}catch(reason){setError(reason instanceof Error?reason.message:'Assessment failed')}finally{setLoading(false)}}

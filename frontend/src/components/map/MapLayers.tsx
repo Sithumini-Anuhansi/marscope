@@ -22,7 +22,7 @@ export function MapLayers({ imageryVisibility, imageryErrorLayers, onToggleImage
   const categories: MapLayerCategory[] = ['imagery', 'environment', 'operations']
 
   return (
-    <aside className="max-h-[min(50vh,24rem)] w-[min(18.5rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-void/90 p-3 shadow-lg backdrop-blur-md">
+    <aside className="max-h-[min(50vh,24rem)] w-[min(18.5rem,calc(100vw-2rem))] max-w-full overflow-x-hidden overflow-y-auto rounded-xl border border-line bg-void/90 p-3 shadow-lg backdrop-blur-md">
       <p className="mb-3 flex items-center gap-1.5 font-mono text-[10px] tracking-[0.22em] text-gold uppercase">
         <Layers className="h-3 w-3" aria-hidden="true" />
         Layers

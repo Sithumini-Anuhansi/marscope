@@ -8,7 +8,7 @@ const RESOURCE_OPTIONS: {id:ResourceKind;label:string;icon:typeof Wind}[]=[{id:'
 const emptySummary:SurvivalSummary={mission_id:MISSION,scope_astronaut_id:null,resources:[],equipment:[],communications:[],consumption_history:[],alerts:[],telemetry_status:'missing',updated_at:null}
 
 export function SurvivalAssessmentPage(){
- const [summary,setSummary]=useState<SurvivalSummary>(emptySummary);const[loading,setLoading]=useState(true);const[demo,setDemo]=useState(false);const[actorId,setActorId]=useState<string>(CREW[0][0]);const[role,setRole]=useState<'crew'|'mission-control'>('crew');const[token,setToken]=useState('');const[error,setError]=useState<string|null>(null);const[success,setSuccess]=useState('')
+ const [summary,setSummary]=useState<SurvivalSummary>(emptySummary);const[loading,setLoading]=useState(true);const[demo,setDemo]=useState(true);const[actorId,setActorId]=useState<string>(CREW[0][0]);const[role,setRole]=useState<'crew'|'mission-control'>('crew');const[token,setToken]=useState('');const[error,setError]=useState<string|null>(null);const[success,setSuccess]=useState('')
  const[resource,setResource]=useState<ResourceKind>('oxygen');const[amount,setAmount]=useState('');const[reserve,setReserve]=useState('');const[unit,setUnit]=useState('kg');const[consumed,setConsumed]=useState('');const[equipment,setEquipment]=useState('');const[equipmentStatus,setEquipmentStatus]=useState('operational')
  const [comms,setComms]=useState('')
  useEffect(()=>{if(demo)return;let active=true;getSurvivalSummary(MISSION).then(data=>{if(active){setSummary(data);setError(null)}}).catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'Could not load telemetry')}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[demo])

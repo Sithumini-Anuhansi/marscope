@@ -82,7 +82,7 @@ const DEFAULT_SETTINGS: GlobeDisplaySettings = {
 type PointerEventLike = { position: Cartesian2 } | { endPosition: Cartesian2 }
 
 export interface MarsGlobeProps {
-  focusLocation?: { latitudeDeg: number; longitudeDeg: number } | null
+  focusLocation?: { latitudeDeg: number; longitudeDeg: number; label?: string } | null
   onSurfaceSelect?: (position: { latitudeDeg: number; longitudeDeg: number }) => void
   crewMarkers?: Array<{ id: string; name: string; latitudeDeg: number; longitudeDeg: number; status: string; altitudeKm?: number; path?: Array<{ latitudeDeg: number; longitudeDeg: number; altitudeKm?: number }> }>
   observationMarkers?: Array<{ id: string; label: string; latitudeDeg: number; longitudeDeg: number; category: string; verificationStatus: string }>
@@ -92,10 +92,6 @@ export interface MarsGlobeProps {
 /** SkyBox.show exists at runtime in Cesium 1.140 but is missing from its type definitions. */
 function setSkyBoxVisible(skyBox: SkyBox, show: boolean): void {
   ;(skyBox as SkyBox & { show: boolean }).show = show
-}
-
-function isLargeScreen(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
 }
 
 /** Providers are created once per mounted globe; a failure degrades to the plain ellipsoid. */
@@ -121,9 +117,9 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
   const [tilesPending, setTilesPending] = useState(true)
   const [tileErrorLayers, setTileErrorLayers] = useState<Set<ImageryLayerId>>(() => new Set())
   const [homeNonce, setHomeNonce] = useState(0)
-  const [layersOpen, setLayersOpen] = useState(isLargeScreen)
-  const [legendOpen, setLegendOpen] = useState(isLargeScreen)
-  const [coordinatesOpen, setCoordinatesOpen] = useState(isLargeScreen)
+  const [layersOpen, setLayersOpen] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(false)
+  const [coordinatesOpen, setCoordinatesOpen] = useState(false)
   const [viewer, setViewer] = useState<CesiumViewer | null>(null)
   const [hazardAssessmentEnabled, setHazardAssessmentEnabled] = useState(false)
   const [namedFeaturesVisible, setNamedFeaturesVisible] = useState(false)
@@ -364,7 +360,7 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
   return (
     <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-[#070605]">
       <div
-        className="relative min-h-[26rem] flex-1"
+        className="relative min-h-[30rem] flex-1"
         onPointerLeave={() => readout.current?.setPointer(null)}
       >
         <Viewer
@@ -440,10 +436,10 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
           ) : null}
           {focusLocation ? (
             <Entity
-              name="Selected Mars location"
+              name={focusLocation.label ?? 'Selected Mars location'}
               position={Cartesian3.fromDegrees(focusLocation.longitudeDeg, focusLocation.latitudeDeg, 0, MARS_ELLIPSOID)}
               point={{ pixelSize: 15, color: Color.fromCssColorString('#65c7a0'), outlineColor: Color.WHITE, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }}
-              label={{ text: 'YOUR SELECTED LOCATION', font: '11px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -25), disableDepthTestDistance: Number.POSITIVE_INFINITY }}
+              label={{ text: focusLocation.label ?? 'YOUR SELECTED LOCATION', font: '11px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -25), disableDepthTestDistance: Number.POSITIVE_INFINITY }}
             />
           ) : null}
           {crewMarkers.map((marker, index) => (
@@ -490,9 +486,14 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
         ) : null}
 
         {/* Bottom padding leaves room for Cesium's own credit strip. */}
-        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between gap-3 p-3 pb-9 md:p-4 md:pb-9">
-          <div className="flex items-start justify-between gap-3">
-            <div className="pointer-events-auto min-w-0">
+          <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between gap-3 overflow-hidden p-3 pb-9 md:p-4 md:pb-9">
+          <div className="flex min-h-0 items-start justify-between gap-3">
+            <div className="pointer-events-auto flex max-h-[65vh] w-full max-w-[min(22rem,calc(100%-3.5rem))] shrink-0 flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain">
+              <div className="flex flex-wrap gap-1.5 rounded-xl border border-line bg-void/90 p-2">
+                <PanelToggle icon={Layers} label="Layers" open={layersOpen} onToggle={() => setLayersOpen((open) => !open)} />
+                <PanelToggle icon={Info} label="Legend" open={legendOpen} onToggle={() => setLegendOpen((open) => !open)} />
+                <PanelToggle icon={Compass} label="Coordinates" open={coordinatesOpen} onToggle={() => setCoordinatesOpen((open) => !open)} />
+              </div>
               {layersOpen ? (
                 <MapLayers
                   imageryVisibility={imageryVisibility}
@@ -516,6 +517,8 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
                   />
                 </div>
               ) : null}
+              {legendOpen ? <div className="pointer-events-auto"><MapLegend /></div> : null}
+              {coordinatesOpen ? <div className="pointer-events-auto"><CoordinateDisplay ref={readout} imageryStatus={imageryStatus} usingMarsEllipsoid={usingMarsEllipsoid} /></div> : null}
             </div>
             <div className="pointer-events-auto ml-auto flex shrink-0 flex-col items-end gap-2">
               <MapControls
@@ -525,41 +528,9 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
                 onResetView={handleResetView}
                 onSettingsChange={setSettings}
               />
-              <PanelToggle
-                icon={Layers}
-                label="Layers"
-                open={layersOpen}
-                onToggle={() => setLayersOpen((open) => !open)}
-              />
-              <PanelToggle
-                icon={Info}
-                label="Legend"
-                open={legendOpen}
-                onToggle={() => setLegendOpen((open) => !open)}
-              />
-              <PanelToggle
-                icon={Compass}
-                label="Coordinates"
-                open={coordinatesOpen}
-                onToggle={() => setCoordinatesOpen((open) => !open)}
-              />
             </div>
           </div>
 
-          <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-end">
-            {coordinatesOpen ? <div className="pointer-events-auto">
-              <CoordinateDisplay
-                ref={readout}
-                imageryStatus={imageryStatus}
-                usingMarsEllipsoid={usingMarsEllipsoid}
-              />
-            </div> : null}
-            {legendOpen ? (
-              <div className="pointer-events-auto sm:max-w-[16rem]">
-                <MapLegend />
-              </div>
-            ) : null}
-          </div>
         </div>
       </div>
 
@@ -619,7 +590,7 @@ function TerrainAssessmentPanel({
 
   return (
     <aside
-      className="max-h-[min(42vh,22rem)] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-void/95 p-3 shadow-xl backdrop-blur-md"
+      className="max-h-[min(42vh,22rem)] w-[min(20rem,calc(100vw-2rem))] max-w-full overflow-x-hidden overflow-y-auto rounded-xl border border-line bg-void/95 p-3 shadow-xl backdrop-blur-md"
       aria-label="Terrain assessment"
       aria-live="polite"
       aria-busy={loading}

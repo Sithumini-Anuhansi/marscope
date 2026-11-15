@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getScienceDemoRecords } from '../../services/planetaryArchiveService'
 import type { ScienceDemoRecord } from '../../types/planetaryArchive'
+import { DemoSampleVisualization } from './DemoSampleVisualization'
 
 const SECTION_LABELS: Record<string, string> = {
   atmosphere: 'Atmosphere',
@@ -14,7 +15,7 @@ const SECTION_LABELS: Record<string, string> = {
 export function ScienceDemoPanel({ sections, title = 'Demo data examples' }: { sections: string[]; title?: string }) {
   const [records, setRecords] = useState<ScienceDemoRecord[]>([])
   const [error, setError] = useState(false)
-  const [demo, setDemo] = useState(false)
+  const [demo, setDemo] = useState(true)
   useEffect(() => {
     const controller = new AbortController()
     void getScienceDemoRecords(controller.signal).then((response) => setRecords(response.items)).catch(() => {
@@ -30,10 +31,10 @@ export function ScienceDemoPanel({ sections, title = 'Demo data examples' }: { s
       <button type="button" aria-expanded={demo} onClick={() => setDemo((value) => !value)} className={`rounded-lg border px-3 py-2 text-xs ${demo ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-line text-sand hover:bg-panel-alt'}`}>{demo ? 'Stop demo' : 'Start demo'}</button>
     </div>
     {demo ? <><p role="status" className="mt-2 rounded-lg border border-amber-500/30 bg-amber-950/35 p-2 text-[10px] leading-relaxed text-amber-100">DEMO ONLY · Illustrative values, not NASA observations. Excluded from science maps, hazard classification, risk scores, and route planning. Not operational data.</p>{error ? <p role="status" className="mt-3 text-[10px] text-amber-100">Demo service unavailable. Real assessment inputs remain unchanged.</p> : <div className="mt-3 grid gap-2 md:grid-cols-2">
-      {shown.map((record) => <details key={record.id} className="rounded-lg border border-amber-500/25 bg-[#100c07] p-3">
+      {shown.map((record) => <details key={record.id} open className="rounded-lg border border-amber-500/25 bg-[#100c07] p-3">
         <summary className="cursor-pointer text-xs font-medium text-sand">{record.name}<span className="ml-2 font-mono text-[8px] text-amber-300">{SECTION_LABELS[record.section] ?? record.section}</span></summary>
         <p className="mt-2 text-[9px] leading-relaxed text-amber-100">{record.explanation}</p>
-        <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-black/30 p-2 font-mono text-[9px] text-sand/80">{JSON.stringify(record.sample, null, 2)}</pre>
+        <DemoSampleVisualization sample={record.sample}/>
       </details>)}
     </div>}</> : <p className="mt-2 text-[10px] text-muted">Start the demonstration to view synthetic examples for this section.</p>}
   </section>

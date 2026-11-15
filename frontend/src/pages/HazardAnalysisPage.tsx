@@ -72,7 +72,7 @@ export function HazardAnalysisPage() {
         </p>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
+      <section id="hazard-summary" className="scroll-mt-24 grid items-start gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
         <form onSubmit={handleSubmit} className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5">
           <h2 className="text-sm font-semibold text-sand">Summarize a region</h2>
           <p className="mt-1 text-[11px] leading-relaxed text-muted">Latitude is planetocentric. Longitude is positive east; west-to-east ranges can cross the 0° seam.</p>
@@ -108,7 +108,7 @@ export function HazardAnalysisPage() {
           {error ? <p className="mt-3 text-xs text-mars" role="alert">{error}. Check that the backend is running and the processed MOLA sample is available.</p> : null}
         </form>
 
-        <section className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
+        <section id="hazard-readiness" className="scroll-mt-24 rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-sand">Data readiness</h2>
@@ -128,7 +128,7 @@ export function HazardAnalysisPage() {
       <ScienceDemoPanel sections={['environmental-hazards', 'atmosphere', 'terrain']} title="Hazard and atmosphere display examples" />
 
       {result ? (
-        <section className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
+        <section id="hazard-results" className="scroll-mt-24 rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
             <div>
               <p className="font-mono text-[10px] tracking-[0.2em] text-gold uppercase">{result.assessment_mode?.replaceAll('-', ' ') ?? 'Regional terrain summary'}</p>
@@ -164,7 +164,7 @@ export function HazardAnalysisPage() {
           </div>
         </section>
       ) : (
-        <section className="rounded-2xl border border-dashed border-line bg-panel/40 p-6 text-center">
+        <section id="hazard-results" className="scroll-mt-24 rounded-2xl border border-dashed border-line bg-panel/40 p-6 text-center">
           <p className="text-sm font-medium text-sand">No regional summary yet</p>
           <p className="mt-2 text-xs text-muted">Choose a bounded area and metrics, or query a point on the Mars Explorer map.</p>
           <Link to="/explorer" className="mt-4 inline-flex items-center gap-1.5 text-xs text-gold hover:text-sand">Open Mars Explorer <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" /></Link>

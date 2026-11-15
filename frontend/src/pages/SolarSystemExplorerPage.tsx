@@ -26,7 +26,7 @@ export function SolarSystemExplorerPage() {
   const [bodyError, setBodyError] = useState<string | null>(null)
   const [solarError, setSolarError] = useState<string | null>(null)
   const [marsError, setMarsError] = useState<string | null>(null)
-  const [demo, setDemo] = useState(false)
+  const [demo, setDemo] = useState(true)
   const marsRequest = useRef<AbortController | null>(null)
   const bodyById = useMemo(() => new Map(bodies.map((body) => [body.id, body])), [bodies])
   const selectedBody = bodyById.get(selectedId) ?? bodyById.get('mars')

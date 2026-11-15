@@ -9,7 +9,7 @@ const MISSION_ID = 'ares-iv'
 const CREW = [['crew-01','Asha Raman'],['crew-02','Mateo Silva'],['crew-03','Nia Okafor'],['crew-04','Owen Park']] as const
 
 export function CollaborativeMappingPage() {
-  const [demo, setDemo] = useState(false)
+  const [demo, setDemo] = useState(true)
   const demoObservations: Observation[] = useMemo(() => [
     { id:'demo-gale-ice', mission_id:MISSION_ID, astronaut_id:'crew-01', category:'water-ice', description:'Demo sample: spectral follow-up candidate on a shadowed crater-facing slope.', latitude_deg:-4.2, longitude_deg:137.8, submitted_at:'2026-11-15T08:00:00Z', severity:null, image_refs:[], verification_status:'unverified', supporting_evidence:'Illustrative only; no instrument data attached.' },
     { id:'demo-jezero-rock', mission_id:MISSION_ID, astronaut_id:'crew-02', category:'discovery', description:'Demo sample: layered outcrop candidate for a fictional traverse stop.', latitude_deg:18.5, longitude_deg:77.3, submitted_at:'2026-11-15T08:05:00Z', severity:null, image_refs:[], verification_status:'unverified', supporting_evidence:'Illustrative only; not a real crew report.' },
