@@ -38,6 +38,29 @@ def _normalize_lon(lon: float) -> float:
     return (lon + 180.0) % 360.0 - 180.0
 
 
+def _latest_route_terrain_run() -> tuple[Path, dict[str, Any]] | None:
+    """Prefer a validated local MOLA 128 ppd crop; fall back to global 4 ppd."""
+    candidates = []
+    project_root = Path(__file__).resolve().parents[3]
+    for root in (project_root / "data" / "processed" / "mola-128ppd", project_root / "data" / "processed" / "mola"):
+        for path in root.glob("*/processing-manifest.json"):
+            try:
+                manifest = json.loads(path.read_text(encoding="utf-8"))
+                resolution = float(manifest.get("pixel_resolution_m", {}).get("x", 0))
+                expected_id = "mola-128ppd" if "mola-128ppd" in str(root) else "mola"
+                if manifest.get("dataset_id") != expected_id or resolution <= 0:
+                    continue
+                if all((path.parent / manifest["outputs"][key]["file"]).is_file() for key in ("elevation", "slope", "roughness")):
+                    candidates.append((resolution, path.parent, manifest))
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+    # Smaller meter-per-cell resolution is finer; new runs win ties.
+    if candidates:
+        _, run_dir, manifest = min(candidates, key=lambda item: (item[0], item[1].name))
+        return run_dir, manifest
+    return _latest_run()
+
+
 def _great_circle_km(a: tuple[float, float], b: tuple[float, float]) -> float:
     lon1, lat1 = map(math.radians, a)
     lon2, lat2 = map(math.radians, b)
@@ -52,7 +75,12 @@ def _coord_to_cell(dataset: rasterio.io.DatasetReader, point) -> tuple[int, int]
     x = math.radians(longitude - 180.0) * radius
     y = math.radians(point.latitude_deg) * radius
     row, col = dataset.index(x, y)
-    return min(max(int(row), 0), dataset.height - 1), int(col) % dataset.width
+    row, col = int(row), int(col)
+    if dataset.width == 1440 and dataset.height == 720:  # only the global 4 ppd product wraps at 0/360°
+        return min(max(row, 0), dataset.height - 1), col % dataset.width
+    if row < 0 or row >= dataset.height or col < 0 or col >= dataset.width:
+        return -1, -1
+    return row, col
 
 
 def _cell_lonlat(dataset: rasterio.io.DatasetReader, row: int, col: int) -> tuple[float, float]:
@@ -204,7 +232,19 @@ def _unavailable(result_id: str, request: RoutePlanningRequest, reasons: list[st
 
 def generate_routes(request: RoutePlanningRequest) -> dict[str, Any]:
     result_id = str(uuid4())
-    run = _latest_run()
+    run = _latest_route_terrain_run()
+    if run and run[1].get("dataset_id") == "mola-128ppd":
+        window = run[1].get("study_window", {})
+        center_lat = float(window.get("center_latitude_deg", 999))
+        center_lon = float(window.get("center_longitude_deg", 999))
+        half = float(window.get("half_window_degrees", 0))
+        def in_window(point) -> bool:
+            lon_delta = abs((point.longitude_deg - center_lon + 180) % 360 - 180)
+            return abs(point.latitude_deg - center_lat) <= half and lon_delta <= half
+        if not (in_window(request.start) and in_window(request.destination)):
+            # A detailed crop only covers its recorded study area. Use global
+            # context when coordinates are elsewhere; its resolution gate remains.
+            run = _latest_run()
     if run is None:
         result = _unavailable(result_id, request, ["validated, processed elevation, slope, and roughness rasters"])
         _cache(result)
@@ -213,11 +253,11 @@ def generate_routes(request: RoutePlanningRequest) -> dict[str, Any]:
     run_dir, manifest = run
     resolution = float(manifest.get("pixel_resolution_m", {}).get("x", 0)) / 1000.0
     source = {
-        "dataset_id": "mola", "product_id": manifest.get("product_id"),
+        "dataset_id": manifest.get("dataset_id", "mola"), "product_id": manifest.get("product_id"),
         "processing_run": manifest.get("processing_run"),
         "source_period_utc": None,
         "cell_resolution_km": resolution,
-        "quality": "coarse historical global topography; interpolated empty bins cannot be identified",
+        "quality": "historical orbital topography; only cells with MOLA observations are represented" if manifest.get("dataset_id") == "mola-128ppd" else "coarse historical global topography; interpolated empty bins cannot be identified",
     }
     missing = []
     if resolution <= 0:
@@ -263,7 +303,7 @@ def generate_routes(request: RoutePlanningRequest) -> dict[str, Any]:
             source["source_period_utc"] = source_period
             valid = _valid_cells([elevation, slope, roughness], dem.nodata)
             start, goal = _coord_to_cell(dem, request.start), _coord_to_cell(dem, request.destination)
-            if not valid[start] or not valid[goal]:
+            if min(*start, *goal) < 0 or not valid[start] or not valid[goal]:
                 result = _unavailable(result_id, request, ["start or destination falls on a NoData cell"], source)
                 _cache(result)
                 return result
@@ -354,7 +394,7 @@ def generate_routes(request: RoutePlanningRequest) -> dict[str, Any]:
                     "A* edge cost is distance multiplied by configurable slope and roughness penalties.",
                     "Penalty weights are user-selected preferences, not calibrated human mobility or survival risk.",
                     "No precise traversal time, astronaut safety, or mission-success probability is inferred.",
-                    "MOLA topography is historical and its 14.8 km sample is far coarser than local EVA terrain when used.",
+                    f"MOLA topography is historical and its {resolution:.3f} km sample is far coarser than local EVA terrain.",
                 ],
                 "policy_id": policy.get("policy_id") if policy else None,
             }
@@ -383,14 +423,14 @@ def compare_routes(route_ids: list[str]) -> dict[str, Any]:
 
 
 def route_planner_status() -> dict[str, Any]:
-    run = _latest_run()
+    run = _latest_route_terrain_run()
     if not run:
         return {"status": "unavailable", "source": None, "message": "No validated processed terrain is available."}
     _path, manifest = run
     resolution = float(manifest.get("pixel_resolution_m", {}).get("x", 0)) / 1000.0
     return {
         "status": "terrain-candidate-available" if resolution > 0 else "unavailable",
-        "source": {"dataset_id": "mola", "product_id": manifest.get("product_id"), "cell_resolution_km": resolution,
+        "source": {"dataset_id": manifest.get("dataset_id", "mola"), "product_id": manifest.get("product_id"), "cell_resolution_km": resolution,
                    "processing_run": manifest.get("processing_run")},
         "route_generation": "requires a mission-specified maximum source cell size and compatible raster grid",
         "hazards": "unavailable without a reviewed cited classification policy or validated hazard geometries",

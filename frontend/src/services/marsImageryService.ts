@@ -89,6 +89,15 @@ export const IMAGERY_LAYER_IDS = Object.keys(IMAGERY_SOURCES) as ImageryLayerId[
 
 export const MAP_LAYER_DEFINITIONS: MapLayerDefinition[] = [
   {
+    id: 'named-features',
+    category: 'operations',
+    label: 'Named Mars features',
+    description: 'Scale-aware IAU-approved feature names from the USGS Gazetteer. NASA does not endorse this application or the file host.',
+    availability: 'live',
+    defaultVisible: true,
+    credit: 'USGS Astrogeology Science Center / IAU Working Group for Planetary System Nomenclature',
+  },
+  {
     id: 'viking-mdim',
     category: 'imagery',
     label: 'Mars surface — Viking MDIM 2.1',

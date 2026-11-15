@@ -49,3 +49,56 @@ export interface PlanetaryArchiveResponse {
   items: PlanetaryArchiveSource[]
   limitations: string[]
 }
+
+export interface MedaArchiveResponse {
+  dataset_id: string
+  dataset_name: string
+  status: string
+  site: string
+  site_coordinates_areocentric_deg: { latitude: number; longitude_east: number }
+  not_current_conditions: boolean
+  measurements_included: boolean
+  source_url: string
+  manifest: {
+    record_count: number
+    first_record_midpoint_utc: string
+    latest_record: {
+      midpoint_utc: string
+      start_time_utc: string
+      stop_time_utc: string
+      start_sol: string
+      stop_sol: string
+      title: string
+    }
+    validation: string
+  }
+  records: Array<{
+    midpoint_utc: string
+    start_time_utc: string
+    stop_time_utc: string
+    start_sol: string
+    stop_sol: string
+    title: string
+  }>
+}
+
+export interface ScienceDemoRecord {
+  id: string
+  section: string
+  name: string
+  mode: string
+  sample: Record<string, unknown>
+  explanation: string
+  source_url: string
+  synthetic: true
+  operational_use: false
+}
+
+export interface ScienceDemoResponse {
+  mode: string
+  operational_use: false
+  risk_route_hazard_inputs: false
+  synthetic: true
+  source_note: string
+  items: ScienceDemoRecord[]
+}

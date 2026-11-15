@@ -23,6 +23,26 @@ def _with_local_sample(item: dict) -> dict:
     else:
         result["local_sample"] = None
         result["structurally_validated"] = False
+    if item["id"] == "mola":
+        highres_root = RAW_DATA_ROOT / "mola-128ppd"
+        highres = []
+        if highres_root.is_dir():
+            for highres_manifest in sorted(highres_root.glob("MEGT*/ingestion-manifest.json"), reverse=True):
+                try:
+                    highres.append(json.loads(highres_manifest.read_text(encoding="utf-8")))
+                except (OSError, ValueError):
+                    continue
+        result["higher_resolution_tiles"] = highres
+        result["higher_resolution_tile_count"] = len(highres)
+    if item["id"] == "meda":
+        meda_manifest_path = RAW_DATA_ROOT / "meda" / "meda-ats-index.manifest.json"
+        if meda_manifest_path.is_file():
+            result["local_sample"] = json.loads(meda_manifest_path.read_text(encoding="utf-8"))
+            result["downloaded"] = True
+            result["structurally_validated"] = True
+            result["status"] = "local-calibrated-product-index-ingested"
+        else:
+            result["status"] = "catalogued-ingestion-not-implemented"
     return result
 
 @router.get("")
@@ -46,6 +66,40 @@ def get_mola_processing_manifest():
         }
         runs.append(manifest)
     return {"runs": runs}
+
+
+@router.get("/mola-128ppd/processed", summary="List local MOLA 128 ppd study-window layers")
+def get_mola_128_processing_manifests():
+    processed_root = RAW_DATA_ROOT.parent / "processed" / "mola-128ppd"
+    manifests = sorted(processed_root.glob("MEGT*-*/processing-manifest.json"), reverse=True)
+    runs = []
+    for path in manifests:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        run_id = path.parent.name
+        manifest["layers"] = {
+            layer_id: f"/api/v1/datasets/mola-128ppd/processed/{run_id}/{layer_id}"
+            for layer_id in manifest.get("outputs", {})
+        }
+        runs.append(manifest)
+    return {"runs": runs, "message": "No local high-resolution study window exists yet." if not runs else None}
+
+
+@router.get("/mola-128ppd/processed/{run_id}/{layer_id}", summary="Download a local MOLA 128 ppd study-window GeoTIFF")
+def get_mola_128_processed_layer(run_id: str, layer_id: str):
+    if not re.fullmatch(r"MEGT\d{2}[NS]\d{3}HB-[0-9TZ]+", run_id, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="Invalid MOLA 128 ppd processing run ID")
+    manifest_path = RAW_DATA_ROOT.parent / "processed" / "mola-128ppd" / run_id / "processing-manifest.json"
+    if not manifest_path.is_file():
+        raise HTTPException(status_code=404, detail="Processed MOLA study window not found")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    record = manifest.get("outputs", {}).get(layer_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Unknown processed MOLA layer")
+    filename = Path(record["file"]).name
+    path = manifest_path.parent / filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Processed MOLA layer not found")
+    return FileResponse(path, media_type="image/tiff", filename=path.name)
 
 
 @router.get("/mola/processed/{run_id}/{layer_id}", summary="Download a processed MOLA GeoTIFF layer")

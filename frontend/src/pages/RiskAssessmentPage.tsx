@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, ArrowUpRight, Brain, CircleHelp, ImageUp, LoaderCircle, RefreshCw } from 'lucide-react'
+import { ScienceDemoPanel } from '../components/common/ScienceDemoPanel'
 import { classifyTerrainImage, getAIServiceStatus, submitAIRiskSynthesis } from '../services/aiService'
 import { getHazardAssessmentAtLocation } from '../services/hazardService'
 import { getRiskServiceStatus, submitRiskAssessment } from '../services/riskService'
@@ -186,6 +187,8 @@ export function RiskAssessmentPage() {
           ) : <p className="mt-2 text-xs text-muted">Checking AI service readiness…</p>}
         </div>
       </section>
+
+      <ScienceDemoPanel sections={['terrain', 'environmental-hazards', 'atmosphere', 'habitability', 'biosignatures']} title="Example inputs for the experimental models" />
 
       {terrainClassification?.mask_png_base64 ? (
         <section className="grid gap-4 rounded-2xl border border-line bg-panel/80 p-4 md:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.2fr)] md:p-5">

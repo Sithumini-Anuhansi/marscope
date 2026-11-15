@@ -8,6 +8,8 @@ interface MapLayersProps {
   onToggleImagery: (id: ImageryLayerId, visible: boolean) => void
   hazardAssessmentEnabled: boolean
   onToggleHazardAssessment: (visible: boolean) => void
+  namedFeaturesVisible: boolean
+  onToggleNamedFeatures: (visible: boolean) => void
 }
 
 const CATEGORY_LABEL: Record<MapLayerCategory, string> = {
@@ -16,7 +18,7 @@ const CATEGORY_LABEL: Record<MapLayerCategory, string> = {
   operations: 'Operations',
 }
 
-export function MapLayers({ imageryVisibility, imageryErrorLayers, onToggleImagery, hazardAssessmentEnabled, onToggleHazardAssessment }: MapLayersProps) {
+export function MapLayers({ imageryVisibility, imageryErrorLayers, onToggleImagery, hazardAssessmentEnabled, onToggleHazardAssessment, namedFeaturesVisible, onToggleNamedFeatures }: MapLayersProps) {
   const categories: MapLayerCategory[] = ['imagery', 'environment', 'operations']
 
   return (
@@ -38,6 +40,8 @@ export function MapLayers({ imageryVisibility, imageryErrorLayers, onToggleImage
                 ? false
                 : layer.id === 'hazards'
                   ? hazardAssessmentEnabled
+                  : layer.id === 'named-features'
+                    ? namedFeaturesVisible
                   : imageryVisibility[layer.id as ImageryLayerId]
 
               return (
@@ -55,6 +59,7 @@ export function MapLayers({ imageryVisibility, imageryErrorLayers, onToggleImage
                       onChange={(event) => {
                         if (!live) return
                         if (layer.id === 'hazards') onToggleHazardAssessment(event.target.checked)
+                        else if (layer.id === 'named-features') onToggleNamedFeatures(event.target.checked)
                         else onToggleImagery(layer.id as ImageryLayerId, event.target.checked)
                       }}
                     />

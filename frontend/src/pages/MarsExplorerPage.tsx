@@ -3,9 +3,11 @@ import { ArrowUpRight, Crosshair, MapPin, Route as RouteIcon } from 'lucide-reac
 import { Link } from 'react-router-dom'
 import { MapErrorBoundary } from '../components/map/MapErrorBoundary'
 import { MarsGlobe } from '../components/map/MarsGlobe'
-import { getPlanetaryArchiveProducts } from '../services/planetaryArchiveService'
-import type { PlanetaryArchiveResponse } from '../types/planetaryArchive'
-import { geodeticToPlanetocentricLatitude } from '../utils/marsCoordinates'
+import { getMedaArchiveIndex, getPlanetaryArchiveProducts, getScienceDemoRecords } from '../services/planetaryArchiveService'
+import { getAstrobiologyMaps } from '../services/astrobiologyService'
+import type { AstrobiologyEvidenceFeature, AstrobiologyMapsResponse } from '../types/astrobiology'
+import type { MedaArchiveResponse, PlanetaryArchiveResponse, ScienceDemoResponse } from '../types/planetaryArchive'
+import { geodeticToPlanetocentricLatitude, planetocentricToGeodeticLatitude } from '../utils/marsCoordinates'
 
 type MarsPoint = { latitudeDeg: number; longitudeDeg: number }
 type RouteEndpoint = 'start' | 'destination'
@@ -25,15 +27,50 @@ export function MarsExplorerPage() {
   const [destination, setDestination] = useState<MarsPoint | null>(null)
   const [selecting, setSelecting] = useState<RouteEndpoint | null>(null)
   const [studyAreaFocused, setStudyAreaFocused] = useState(false)
+  const [scienceFocus, setScienceFocus] = useState<MarsPoint | null>(null)
   const [archivePoint, setArchivePoint] = useState<MarsPoint>(BOXWORK_STUDY_POINT)
   const [archive, setArchive] = useState<PlanetaryArchiveResponse | null>(null)
   const [archiveLoading, setArchiveLoading] = useState(false)
   const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [meda, setMeda] = useState<MedaArchiveResponse | null>(null)
+  const [scienceDemo, setScienceDemo] = useState<ScienceDemoResponse | null>(null)
+  const [astrobiology, setAstrobiology] = useState<AstrobiologyMapsResponse | null>(null)
+  const [astrobiologyError, setAstrobiologyError] = useState<string | null>(null)
+  const [showHabitabilityMap, setShowHabitabilityMap] = useState(true)
+  const [showPastLifeMap, setShowPastLifeMap] = useState(false)
+  const [showPresentLifeMap, setShowPresentLifeMap] = useState(false)
+  const [showSettlementMap, setShowSettlementMap] = useState(false)
   const selectedPoint = selecting === 'start' ? start : destination
-  const focusLocation = useMemo(() => selecting ? selectedPoint : studyAreaFocused ? BOXWORK_STUDY_POINT : destination ?? start, [selecting, selectedPoint, studyAreaFocused, destination, start])
+  const focusLocation = useMemo(() => selecting ? selectedPoint : scienceFocus ?? (studyAreaFocused ? BOXWORK_STUDY_POINT : destination ?? start), [selecting, selectedPoint, scienceFocus, studyAreaFocused, destination, start])
+
+  const visibleScienceFeatures = useMemo(() => {
+    if (!astrobiology) return [] as AstrobiologyEvidenceFeature[]
+    return [
+      ...(showHabitabilityMap ? astrobiology.habitability.features : []),
+      ...(showPastLifeMap ? astrobiology.biosignatures.past_life.features : []),
+      ...(showPresentLifeMap ? astrobiology.biosignatures.present_life.features : []),
+      ...(showSettlementMap ? astrobiology.human_settlement.features : []),
+    ]
+  }, [astrobiology, showHabitabilityMap, showPastLifeMap, showPresentLifeMap, showSettlementMap])
+  const globeScienceMarkers = useMemo(() => {
+    const grouped = new Map<string, AstrobiologyEvidenceFeature[]>()
+    for (const feature of visibleScienceFeatures) {
+      const key = `${feature.site}:${feature.coordinates.latitude_deg}:${feature.coordinates.longitude_deg}`
+      grouped.set(key, [...(grouped.get(key) ?? []), feature])
+    }
+    return [...grouped.entries()].map(([id, features]) => ({
+      id,
+      label: features[0].site,
+      latitudeDeg: planetocentricToGeodeticLatitude(features[0].coordinates.latitude_deg),
+      longitudeDeg: features[0].coordinates.longitude_deg,
+      color: features.some((feature) => feature.evidence_type === 'regional-resource-context') ? '#f0b35a' : features.some((feature) => feature.evidence_type === 'past-environment-habitability' || feature.evidence_type === 'subsurface-water-resource-context') ? '#55d6be' : '#c780ff',
+      category: features.map((feature) => feature.title).join(' · '),
+    }))
+  }, [visibleScienceFeatures])
 
   function onSurfaceSelect(point: MarsPoint) {
     setStudyAreaFocused(false)
+    setScienceFocus(null)
     setArchivePoint({ ...point, latitudeDeg: geodeticToPlanetocentricLatitude(point.latitudeDeg) })
     if (selecting === 'start') setStart(point)
     if (selecting === 'destination') setDestination(point)
@@ -59,6 +96,26 @@ export function MarsExplorerPage() {
     return () => controller.abort()
   }, [archivePoint])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    void getMedaArchiveIndex(controller.signal).then(setMeda).catch(() => setMeda(null))
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getAstrobiologyMaps(controller.signal)
+      .then((result) => { setAstrobiology(result); setAstrobiologyError(null) })
+      .catch((error: unknown) => { if (!controller.signal.aborted) setAstrobiologyError(error instanceof Error ? error.message : 'Astrobiology evidence maps are unavailable.') })
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getScienceDemoRecords(controller.signal).then(setScienceDemo).catch(() => setScienceDemo(null))
+    return () => controller.abort()
+  }, [])
+
   return (
     <div className="mx-auto flex min-h-[calc(100svh-8.5rem)] w-full max-w-[1700px] flex-col gap-4">
       <header>
@@ -69,12 +126,26 @@ export function MarsExplorerPage() {
         </p>
       </header>
 
+      <section className="rounded-xl border border-line bg-panel/75 p-3 text-[10px] leading-relaxed text-muted" aria-label="Data sources and usage notes">
+        <p><span className="font-semibold text-sand">Map data and attribution:</span> Mars surface imagery uses NASA/JPL Mars Trek. Visible named-feature labels use the USGS Gazetteer of Planetary Nomenclature and IAU-approved Mars feature center points. The USGS global geologic map is available as a reference; its geologic polygons are not currently overlaid here.</p>
+        <p className="mt-1">NASA’s Curiosity Mount Sharp path is a historical proposed-route illustration, not live route data. Perseverance raw images are a gallery, not georeferenced map points. NASA Worldview is an Earth-observation viewer and is not used as Mars imagery. NASA attribution does not imply endorsement of MARSCOPE or non-government hosting providers; follow each linked source’s terms.</p>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+          <a className="text-gold underline" href="https://trek.nasa.gov/mars/" target="_blank" rel="noreferrer">NASA/JPL Mars Trek</a>
+          <a className="text-gold underline" href="https://planetarynames.wr.usgs.gov/GIS_Downloads" target="_blank" rel="noreferrer">USGS/IAU name catalog</a>
+          <a className="text-gold underline" href="https://astrogeology-usgs.hub.arcgis.com/pages/interactive-maps-mars" target="_blank" rel="noreferrer">USGS Mars geologic maps</a>
+          <a className="text-gold underline" href="https://science.nasa.gov/resource/curiositys-proposed-path-up-mount-sharp/" target="_blank" rel="noreferrer">Curiosity proposed path example</a>
+          <a className="text-gold underline" href="https://worldview.earthdata.nasa.gov/" target="_blank" rel="noreferrer">NASA Worldview (Earth)</a>
+          <a className="text-gold underline" href="https://mars.nasa.gov/mars2020/multimedia/raw-images/" target="_blank" rel="noreferrer">Perseverance raw images</a>
+        </div>
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="relative min-h-[34rem] overflow-hidden rounded-2xl border border-line bg-[#070605] xl:min-h-[42rem]">
           <MapErrorBoundary>
             <MarsGlobe
               focusLocation={focusLocation}
               onSurfaceSelect={onSurfaceSelect}
+              explorationMarkers={globeScienceMarkers}
             />
           </MapErrorBoundary>
           {selecting ? <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-xl border border-gold/50 bg-void/95 px-4 py-2 text-center text-xs text-gold shadow-lg">
@@ -94,6 +165,21 @@ export function MarsExplorerPage() {
             </a>
           </section>
 
+          <AstrobiologyMapPanel
+            data={astrobiology}
+            error={astrobiologyError}
+            demoItems={scienceDemo?.items ?? []}
+            showHabitability={showHabitabilityMap}
+            showPastLife={showPastLifeMap}
+            showPresentLife={showPresentLifeMap}
+            showSettlement={showSettlementMap}
+            onToggleHabitability={setShowHabitabilityMap}
+            onTogglePastLife={setShowPastLifeMap}
+            onTogglePresentLife={setShowPresentLifeMap}
+            onToggleSettlement={setShowSettlementMap}
+            onFocus={(latitudeDeg, longitudeDeg) => { setSelecting(null); setStudyAreaFocused(false); setScienceFocus({ latitudeDeg: planetocentricToGeodeticLatitude(latitudeDeg), longitudeDeg }) }}
+          />
+
           <section className="rounded-2xl border border-line bg-panel p-4">
             <div className="flex items-center gap-2"><Crosshair className="h-4 w-4 text-gold"/><h2 className="text-sm font-semibold text-sand">Marswalk endpoints</h2></div>
             <div className="mt-3 space-y-2">
@@ -110,12 +196,33 @@ export function MarsExplorerPage() {
               <li className="rounded-lg border border-gold/20 bg-void p-2"><span className="font-medium text-gold">Connected · Viking imagery</span><span className="mt-0.5 block text-muted">Global visual context; not rover-scale detail.</span></li>
               <li className="rounded-lg border border-gold/20 bg-void p-2"><span className="font-medium text-gold">Connected · NASA PDS product coverage</span><span className="mt-0.5 block text-muted">Location searches return live THEMIS, CTX, HiRISE DTM, CRISM, and SHARAD archive products, browse images, and PDS file links below.</span></li>
               <li className="rounded-lg border border-warn/20 bg-void p-2"><span className="font-medium text-warn">Beta · CTX tile layer</span><span className="mt-0.5 block text-muted">External mosaic service; confirm tile coverage and alignment at the selected site.</span></li>
-              <li className="rounded-lg border border-line bg-void p-2"><span className="font-medium text-muted">Not yet connected · MCD, MEDA, MARCI, MCS, RAD, AI4MARS</span><span className="mt-0.5 block text-muted">These need their separate climate, rover, or dataset workflows; they are not represented as live measurements here.</span></li>
+              {meda ? <li className="rounded-lg border border-gold/20 bg-void p-2"><span className="font-medium text-gold">Ingested · MEDA calibrated ATS index</span><span className="mt-0.5 block text-muted">{meda.manifest.record_count.toLocaleString()} archived product entries, latest listed sol {meda.manifest.latest_record.start_sol} ({new Date(meda.manifest.latest_record.midpoint_utc).toLocaleDateString()}). This is the Perseverance archive index; measurements are not in the index.</span><a href={meda.source_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-gold underline">PDS index source <ArrowUpRight className="h-3 w-3" /></a></li> : null}
+              <li className="rounded-lg border border-line bg-void p-2"><span className="font-medium text-muted">Not yet integrated · MCD, MARCI, MCS, RAD, AI4MARS</span><span className="mt-0.5 block text-muted">These need separate climate-model, orbital archive, rover-site, or labeled-dataset ingestion workflows.</span></li>
             </ul>
             <a href="https://ode.rsl.wustl.edu/mars2/" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[10px] text-gold hover:text-sand">Search NASA PDS Mars ODE for site coverage <ArrowUpRight className="h-3 w-3"/></a>
           </section>
         </aside>
       </section>
+
+      {scienceDemo ? <section aria-labelledby="demo-science-heading" className="rounded-2xl border-2 border-amber-500/70 bg-[#201606] p-4 md:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.2em] text-amber-300 uppercase">Demonstration only · simulated examples</p>
+            <h2 id="demo-science-heading" className="mt-1 text-lg font-semibold text-sand">Science-source demo gallery</h2>
+            <p className="mt-1 max-w-4xl text-[11px] leading-relaxed text-amber-100">{scienceDemo.mode}. Values below are illustrative placeholders, not NASA observations, measurements, or model output. Demo records are excluded from hazard, risk, and route calculations.</p>
+          </div>
+          <span className="rounded-lg border border-amber-300/50 px-2.5 py-1.5 font-mono text-[9px] text-amber-200">NOT FOR SCIENTIFIC USE</span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {scienceDemo.items.map((item) => <article key={item.id} className="rounded-xl border border-amber-500/30 bg-[#100c07] p-3">
+            <div className="flex items-start justify-between gap-2"><h3 className="text-xs font-semibold text-sand">{item.name}</h3><span className="shrink-0 rounded bg-amber-950 px-1.5 py-0.5 font-mono text-[8px] text-amber-200">DEMO</span></div>
+            <p className="mt-2 font-mono text-[9px] text-amber-300">{item.mode}</p>
+            <pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-black/40 p-2 font-mono text-[9px] leading-relaxed text-sand">{JSON.stringify(item.sample, null, 2)}</pre>
+            <p className="mt-2 text-[9px] leading-relaxed text-muted">{item.explanation}</p>
+            <a href={item.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[9px] text-gold underline">Open dataset/topic reference <ArrowUpRight className="h-3 w-3" /></a>
+          </article>)}
+        </div>
+      </section> : null}
 
       <section className="rounded-2xl border border-line bg-panel p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -185,4 +292,89 @@ export function MarsExplorerPage() {
       <p className="text-[10px] leading-relaxed text-muted">A route or map point is not a safety finding. The current terrain products are historical and coarse; no validated astronaut mobility model, local obstacle layer, or calibrated environmental safety stack is connected.</p>
     </div>
   )
+}
+
+interface AstrobiologyMapPanelProps {
+  data: AstrobiologyMapsResponse | null
+  demoItems: ScienceDemoResponse['items']
+  error: string | null
+  showHabitability: boolean
+  showPastLife: boolean
+  showPresentLife: boolean
+  showSettlement: boolean
+  onToggleHabitability: (value: boolean) => void
+  onTogglePastLife: (value: boolean) => void
+  onTogglePresentLife: (value: boolean) => void
+  onToggleSettlement: (value: boolean) => void
+  onFocus: (latitudeDeg: number, longitudeDeg: number) => void
+}
+
+function AstrobiologyMapPanel({ data, error, demoItems, showHabitability, showPastLife, showPresentLife, showSettlement,
+  onToggleHabitability, onTogglePastLife, onTogglePresentLife, onToggleSettlement, onFocus }: AstrobiologyMapPanelProps) {
+  const records = [
+    ...(showHabitability ? data?.habitability.features ?? [] : []),
+    ...(showPastLife ? data?.biosignatures.past_life.features ?? [] : []),
+    ...(showPresentLife ? data?.biosignatures.present_life.features ?? [] : []),
+    ...(showSettlement ? data?.human_settlement.features ?? [] : []),
+  ]
+  const selectedDemoSections = new Set([
+    ...(showHabitability ? ['habitability'] : []),
+    ...(showPastLife || showPresentLife ? ['biosignatures'] : []),
+    ...(showSettlement ? ['human-settlement'] : []),
+  ])
+  const visibleDemos = demoItems.filter((item) => selectedDemoSections.has(item.section))
+  return <section className="rounded-2xl border border-line bg-panel p-4">
+    <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold text-sand">Astrobiology research maps</h2><span className="font-mono text-[8px] text-gold">EVIDENCE ONLY</span></div>
+    <p className="mt-1 text-[9px] leading-relaxed text-muted">Habitability asks whether an environment could support life. Biosignature investigations ask whether observations could indicate life. The map layers stay independent.</p>
+    {error ? <p role="alert" className="mt-3 rounded-lg border border-warn/30 bg-void p-2 text-[9px] text-warn">Map records unavailable: {error}</p> : null}
+    <div className="mt-3 space-y-2">
+      <label className="flex items-start gap-2 rounded-lg border border-line bg-void p-2.5 text-[10px]">
+        <input type="checkbox" className="mt-0.5 accent-[#55d6be]" checked={showHabitability} onChange={(event) => onToggleHabitability(event.target.checked)} />
+        <span><strong className="text-sand">Potential habitability evidence</strong><span className="mt-0.5 block text-muted">Ancient environments and water-resource context; teal map pins.</span></span>
+      </label>
+      <label className="flex items-start gap-2 rounded-lg border border-line bg-void p-2.5 text-[10px]">
+        <input type="checkbox" className="mt-0.5 accent-[#c780ff]" checked={showPastLife} onChange={(event) => onTogglePastLife(event.target.checked)} />
+        <span><strong className="text-sand">Past-life investigation</strong><span className="mt-0.5 block text-muted">Organic observations and sample targets with unresolved biological origin; violet pins.</span></span>
+      </label>
+      <label className="flex items-start gap-2 rounded-lg border border-line bg-void p-2.5 text-[10px]">
+        <input type="checkbox" className="mt-0.5 accent-[#ef7f78]" checked={showPresentLife} onChange={(event) => onTogglePresentLife(event.target.checked)} />
+        <span><strong className="text-sand">Present-life investigation</strong><span className="mt-0.5 block text-muted">No validated current-life records are integrated; this empty layer is not evidence of absence.</span></span>
+      </label>
+      <label className="flex items-start gap-2 rounded-lg border border-line bg-void p-2.5 text-[10px]">
+        <input type="checkbox" className="mt-0.5 accent-[#f0b35a]" checked={showSettlement} onChange={(event) => onToggleSettlement(event.target.checked)} />
+        <span><strong className="text-sand">Human settlement resource context</strong><span className="mt-0.5 block text-muted">Separate from microbial habitability; amber pins show resource evidence only.</span></span>
+      </label>
+    </div>
+    {data ? <div className="mt-3 rounded-lg border border-warn/25 bg-void p-2.5">
+      <p className="text-[10px] font-semibold text-warn">Habitability index: {data.habitability.score_0_100 == null ? 'unscored' : `${data.habitability.score_0_100}/100`}</p>
+      <p className="mt-1 text-[9px] leading-relaxed text-muted">{data.habitability.score_explanation}</p>
+      <p className="mt-1 text-[9px] leading-relaxed text-muted">{data.habitability.temporal_warning}</p>
+      <details className="mt-2">
+        <summary className="cursor-pointer text-[9px] text-gold">Review the ten factor inputs</summary>
+        <ul className="mt-2 grid grid-cols-2 gap-1 text-[8px] text-muted">{data.habitability.factors.map((factor) => <li key={factor.id}><span className="text-sand">{factor.label}:</span> {factor.status.replaceAll('-', ' ')}</li>)}</ul>
+      </details>
+    </div> : !error ? <p role="status" className="mt-3 text-[9px] text-muted">Loading cited regional research records…</p> : null}
+    {showPresentLife && data ? <p className="mt-2 rounded-lg border border-line bg-void p-2 text-[9px] leading-relaxed text-muted">{data.biosignatures.present_life.assessment}</p> : null}
+    {showSettlement && data ? <div className="mt-2 rounded-lg border border-warn/25 bg-void p-2.5"><p className="text-[10px] font-semibold text-warn">Settlement suitability: unscored</p><p className="mt-1 text-[9px] leading-relaxed text-muted">{data.human_settlement.score_explanation} {data.human_settlement.warning}</p><details className="mt-2"><summary className="cursor-pointer text-[9px] text-gold">Review settlement inputs</summary><ul className="mt-2 space-y-1 text-[8px] text-muted">{data.human_settlement.factors.map((factor) => <li key={factor.id}><span className="text-sand">{factor.id.replaceAll('-', ' ')}:</span> {factor.status.replaceAll('-', ' ')}</li>)}</ul></details></div> : null}
+    <div className="mt-3 space-y-2">
+      {records.map((record) => <article key={record.id} className="rounded-lg border border-line bg-void p-2.5">
+        <div className="flex items-start justify-between gap-2"><div><h3 className="text-[10px] font-semibold text-sand">{record.site}</h3><p className="mt-0.5 text-[9px] text-gold">{record.title}</p></div><span className="shrink-0 text-[8px] text-muted">{record.temporal_context}</span></div>
+        <p className="mt-1 text-[9px] leading-relaxed text-muted">{record.summary}</p>
+        <p className="mt-1 text-[8px] leading-relaxed text-amber-200">{record.interpretation_limit}</p>
+        <p className="mt-1 font-mono text-[8px] text-muted">Regional map anchor · {record.coordinates.latitude_deg.toFixed(3)}° lat · {record.coordinates.longitude_deg.toFixed(3)}° E</p>
+        <div className="mt-2 flex items-center justify-between gap-2"><a href={record.source_url} target="_blank" rel="noreferrer" className="text-[8px] text-gold underline">NASA source</a><button type="button" onClick={() => onFocus(record.coordinates.latitude_deg, record.coordinates.longitude_deg)} className="rounded border border-line px-2 py-1 text-[8px] text-gold hover:bg-panel-alt">Focus map</button></div>
+      </article>)}
+      {!records.length && (showHabitability || showPastLife || showSettlement) && data ? <p className="rounded-lg border border-line bg-void p-2 text-[9px] text-muted">No records are available for the selected layer.</p> : null}
+    </div>
+    {data ? <p className="mt-3 text-[8px] leading-relaxed text-muted">{data.separation_note} {data.source_note}</p> : null}
+    {visibleDemos.length ? <section className="mt-3 rounded-xl border-2 border-amber-500/60 bg-[#201606] p-3" aria-label="Synthetic demonstration records">
+      <p className="font-mono text-[9px] font-semibold tracking-wide text-amber-300 uppercase">DEMO ONLY · synthetic scenarios · not plotted</p>
+      <p className="mt-1 text-[8px] leading-relaxed text-amber-100">These values are examples for the interface. They have no Mars coordinates and are not used by real evidence records, scores, hazards, or routes.</p>
+      <div className="mt-2 space-y-2">{visibleDemos.map((item) => <article key={item.id} className="rounded-lg border border-amber-500/30 bg-black/30 p-2">
+        <h4 className="text-[9px] font-semibold text-sand">{item.name} <span className="font-mono text-amber-300">DEMO</span></h4>
+        <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words font-mono text-[8px] leading-relaxed text-amber-100">{JSON.stringify(item.sample, null, 2)}</pre>
+        <p className="mt-1 text-[8px] leading-relaxed text-muted">{item.explanation}</p>
+      </article>)}</div>
+    </section> : null}
+  </section>
 }

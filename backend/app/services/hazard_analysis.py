@@ -19,10 +19,11 @@ except ImportError:  # Core FastAPI install remains usable without optional GIS 
     Window = None  # type: ignore[assignment,misc]
     GEOSPATIAL_DEPENDENCIES_AVAILABLE = False
 
-from app.data_processing.mars_coordinates import normalize_east_longitude, raster_cell_center
+from app.data_processing.mars_coordinates import normalize_east_longitude
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PROCESSED_ROOT = PROJECT_ROOT / "data" / "processed" / "mola"
+PROCESSED_128_ROOT = PROJECT_ROOT / "data" / "processed" / "mola-128ppd"
 AVAILABLE_METRICS = {
     "terrain_slope": ("terrain_slope_deg.tif", "slope", "degree", "Derived from MOLA topography by centered finite differences."),
     "surface_roughness": ("terrain_roughness_std_m.tif", "roughness", "m", "3x3-cell population standard deviation of MOLA topography."),
@@ -49,6 +50,24 @@ def _latest_run() -> tuple[Path, dict[str, Any]] | None:
     return None
 
 
+def _run_for_location(latitude: float, longitude: float) -> tuple[Path, dict[str, Any]] | None:
+    """Use a detailed MOLA crop only if its recorded window covers this point."""
+    for manifest_path in sorted(PROCESSED_128_ROOT.glob("*/processing-manifest.json"), reverse=True):
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            window = manifest["study_window"]
+            half = float(window["half_window_degrees"])
+            lon_delta = abs((longitude - float(window["center_longitude_deg"]) + 180) % 360 - 180)
+            if abs(latitude - float(window["center_latitude_deg"])) > half or lon_delta > half:
+                continue
+            if all((manifest_path.parent / manifest["outputs"][key]["file"]).is_file()
+                   for key in ("elevation", "slope", "roughness")):
+                return manifest_path.parent, manifest
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return _latest_run()
+
+
 def _policy() -> dict[str, Any] | None:
     policy_path = os.getenv("MARSCOPE_HAZARD_POLICY_PATH")
     if not policy_path:
@@ -72,18 +91,19 @@ def _policy() -> dict[str, Any] | None:
     return policy
 
 
-def _classify(category: str, value: float, policy: dict[str, Any] | None, units: str) -> dict[str, Any]:
+def _classify(category: str, value: float, policy: dict[str, Any] | None, units: str,
+              source_resolution_km: float = 14.817845349) -> dict[str, Any]:
     if policy is None:
         return {
             "severity": "unclassified",
             "classification_status": "no-validated-policy",
             "reason": "No reviewed, resolution-appropriate severity policy is configured; this metric is not labeled safe or hazardous.",
         }
-    if float(policy["max_cell_resolution_km"]) < 14.817845349:
+    if source_resolution_km > float(policy["max_cell_resolution_km"]):
         return {
             "severity": "unclassified",
             "classification_status": "policy-incompatible-resolution",
-            "reason": "The configured policy requires finer source data than the available MOLA sample.",
+            "reason": "The configured policy requires finer source data than this MOLA sample provides.",
         }
     matched_rules = []
     for rule in policy["rules"]:
@@ -129,7 +149,12 @@ def _coordinate_to_cell(dataset: rasterio.io.DatasetReader, longitude_deg: float
     x = math.radians(longitude_360 - 180.0) * radius_m
     y = math.radians(latitude_deg) * radius_m
     row, column = dataset.index(x, y)
-    return min(max(row, 0), dataset.height - 1), column % dataset.width
+    row, column = int(row), int(column)
+    if dataset.width == 1440 and dataset.height == 720:
+        return min(max(row, 0), dataset.height - 1), column % dataset.width
+    if row < 0 or row >= dataset.height or column < 0 or column >= dataset.width:
+        return -1, -1
+    return row, column
 
 
 def _source_metadata(dataset: rasterio.io.DatasetReader, manifest: dict[str, Any]) -> dict[str, Any]:
@@ -139,13 +164,13 @@ def _source_metadata(dataset: rasterio.io.DatasetReader, manifest: dict[str, Any
     except json.JSONDecodeError:
         period = []
     return {
-        "dataset_id": "mola", "product_id": manifest["product_id"],
+        "dataset_id": manifest.get("dataset_id", "mola"), "product_id": manifest["product_id"],
         "source_period_utc": period,
-        "source_sha256": tags.get("source_sha256"),
-        "resolution_km_per_cell": 14.817845349,
+        "source_sha256": tags.get("source_sha256") or manifest.get("source_sha256", {}).get(f"{manifest['product_id'].lower()}.img"),
+        "resolution_km_per_cell": float(manifest.get("pixel_resolution_m", {}).get("x", 14817.845349)) / 1000.0,
         "latitude_type": tags.get("latitude_type", "planetocentric"),
         "longitude_direction": tags.get("longitude_direction", "positive-east"),
-        "quality": "coarse historical global grid; PDS label notes empty bins may be interpolated and this product has no per-cell observation-count mask",
+        "quality": "historical 128 ppd topography; cells without MOLA observations are masked" if manifest.get("dataset_id") == "mola-128ppd" else "coarse historical global grid; PDS label notes empty bins may be interpolated and this product has no per-cell observation-count mask",
         "uncertainty": "not quantified by this product or processing pipeline",
     }
 
@@ -153,7 +178,7 @@ def _source_metadata(dataset: rasterio.io.DatasetReader, manifest: dict[str, Any
 def _metric_assessment(category: str, value: float, units: str, method: str,
                        source: dict[str, Any], policy: dict[str, Any] | None,
                        coordinate: dict[str, float]) -> dict[str, Any]:
-    classification = _classify(category, value, policy, units)
+    classification = _classify(category, value, policy, units, source.get("resolution_km_per_cell", 14.817845349))
     return {
         "assessment_id": f"derived-{category}-{coordinate['row']}-{coordinate['column']}",
         "category": category, "observation_kind": "derived", "coordinates": coordinate,
@@ -179,7 +204,7 @@ def assess_location(latitude_deg: float, longitude_deg: float, categories: list[
             "assessments": [], "unavailable_categories": requested,
             "message": "Optional geospatial dependencies are not installed. The location is unassessed, not safe.",
         }
-    run = _latest_run()
+    run = _run_for_location(latitude_deg, longitude)
     if run is None:
         return {
             "assessment_status": "insufficient-information", "assessment_mode": "derived-terrain-metrics",
@@ -194,14 +219,21 @@ def assess_location(latitude_deg: float, longitude_deg: float, categories: list[
     source_metadata: dict[str, Any] | None = None
     with rasterio.open(run_dir / "mola_topography_m.tif") as dem:
         row, column = _coordinate_to_cell(dem, longitude, latitude_deg)
-        center_lon, center_lat = raster_cell_center(row, column, height=dem.height, width=dem.width)
+        if row < 0 or column < 0:
+            return {"assessment_status": "insufficient-information", "assessment_mode": "derived-terrain-metrics",
+                    "requested_location": {"latitude_deg": latitude_deg, "longitude_deg": longitude},
+                    "assessments": [], "unavailable_categories": requested,
+                    "message": "The requested location is outside the available processed terrain window; no value is inferred."}
+        center_x, center_y = dem.xy(row, column, offset="center")
+        radius_m = dem.crs.to_dict().get("a", 3396000.0)
+        center_lon = normalize_east_longitude(180.0 + math.degrees(center_x / radius_m))
+        center_lat = math.degrees(center_y / radius_m)
         source_metadata = _source_metadata(dem, manifest)
-        row_indices = np.clip(np.arange(row - 1, row + 2), 0, dem.height - 1)
-        row_start = int(row_indices.min())
-        elevation_window = dem.read(1, window=Window(0, row_start, dem.width, 3))
-        col_indices = [(column + offset) % dem.width for offset in (-1, 0, 1)]
-        row_values = elevation_window[row_indices - row_start, :][:, col_indices]
-        elevation_variation = float(np.nanmax(row_values) - np.nanmin(row_values))
+        row_start, row_end = max(0, row - 1), min(dem.height, row + 2)
+        col_start, col_end = max(0, column - 1), min(dem.width, column + 2)
+        row_values = dem.read(1, window=Window(col_start, row_start, col_end-col_start, row_end-row_start))
+        observed = row_values[(row_values != dem.nodata) & np.isfinite(row_values)]
+        elevation_variation = float(np.max(observed) - np.min(observed)) if observed.size else float("nan")
 
     coordinate = {"longitude_deg": center_lon, "latitude_deg": center_lat, "latitude_type": "planetocentric",
                   "longitude_direction": "positive-east", "row": row, "column": column}

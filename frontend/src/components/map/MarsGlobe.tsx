@@ -6,6 +6,7 @@ import {
   Ellipsoid,
   GeographicProjection,
   LabelStyle,
+  Math as CesiumMath,
   ScreenSpaceEventType,
   SkyBox,
   defined,
@@ -42,6 +43,8 @@ import type {
 } from '../../types/map'
 import type { HazardLocationResponse } from '../../types/hazard'
 import { getHazardAssessmentAtLocation } from '../../services/hazardService'
+import { getNamedMarsFeatures } from '../../services/namedFeaturesService'
+import type { NamedMarsFeature } from '../../types/namedFeature'
 import { submitAIRiskSynthesis } from '../../services/aiService'
 import type { AIRiskSynthesisResponse } from '../../types/ai'
 import {
@@ -83,6 +86,7 @@ export interface MarsGlobeProps {
   onSurfaceSelect?: (position: { latitudeDeg: number; longitudeDeg: number }) => void
   crewMarkers?: Array<{ id: string; name: string; latitudeDeg: number; longitudeDeg: number; status: string }>
   observationMarkers?: Array<{ id: string; label: string; latitudeDeg: number; longitudeDeg: number; category: string; verificationStatus: string }>
+  explorationMarkers?: Array<{ id: string; label: string; latitudeDeg: number; longitudeDeg: number; color: string; category: string }>
 }
 
 /** SkyBox.show exists at runtime in Cesium 1.140 but is missing from its type definitions. */
@@ -111,7 +115,7 @@ function useImageryProviders() {
   }, [])
 }
 
-export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers = [], observationMarkers = [] }: MarsGlobeProps) {
+export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers = [], observationMarkers = [], explorationMarkers = [] }: MarsGlobeProps) {
   const [settings, setSettings] = useState<GlobeDisplaySettings>(DEFAULT_SETTINGS)
   const [imageryVisibility, setImageryVisibility] = useState(createDefaultLayerVisibility)
   const [tilesPending, setTilesPending] = useState(true)
@@ -121,6 +125,11 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
   const [legendOpen, setLegendOpen] = useState(isLargeScreen)
   const [viewer, setViewer] = useState<CesiumViewer | null>(null)
   const [hazardAssessmentEnabled, setHazardAssessmentEnabled] = useState(false)
+  const [namedFeaturesVisible, setNamedFeaturesVisible] = useState(true)
+  const [namedFeatures, setNamedFeatures] = useState<NamedMarsFeature[]>([])
+  const [namedFeaturesTotal, setNamedFeaturesTotal] = useState(0)
+  const [namedFeaturesLoading, setNamedFeaturesLoading] = useState(false)
+  const [namedFeaturesError, setNamedFeaturesError] = useState<string | null>(null)
   const [assessment, setAssessment] = useState<HazardLocationResponse | null>(null)
   const [assessmentLoading, setAssessmentLoading] = useState(false)
   const [assessmentError, setAssessmentError] = useState<string | null>(null)
@@ -222,6 +231,56 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
     setAssessmentLoading(false)
     setAssessedCell(null)
   }, [])
+
+  const handleToggleNamedFeatures = useCallback((visible: boolean) => setNamedFeaturesVisible(visible), [])
+
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed() || !namedFeaturesVisible) {
+      setNamedFeatures([])
+      return
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let controller: AbortController | undefined
+    const loadViewportNames = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        if (viewer.isDestroyed()) return
+        const rectangle = viewer.camera.computeViewRectangle(viewer.scene.globe.ellipsoid)
+        if (!rectangle) return
+        controller?.abort()
+        const requestController = new AbortController()
+        controller = requestController
+        const bounds = {
+          west: CesiumMath.toDegrees(rectangle.west),
+          south: Math.max(-90, CesiumMath.toDegrees(rectangle.south)),
+          east: CesiumMath.toDegrees(rectangle.east),
+          north: Math.min(90, CesiumMath.toDegrees(rectangle.north)),
+        }
+        const altitude = viewer.camera.positionCartographic.height
+        const minimumDiameterKm = altitude > 9_000_000 ? 1_000 : altitude > 3_000_000 ? 300 : altitude > 900_000 ? 8 : 0
+        setNamedFeaturesLoading(true)
+        setNamedFeaturesError(null)
+        void getNamedMarsFeatures(bounds, minimumDiameterKm, requestController.signal)
+          .then((result) => {
+            setNamedFeatures(result.features)
+            setNamedFeaturesTotal(result.matches_in_view)
+          })
+          .catch((error: unknown) => {
+            if (!requestController.signal.aborted) setNamedFeaturesError(error instanceof Error ? error.message : 'USGS feature names are unavailable.')
+          })
+          .finally(() => {
+            if (!requestController.signal.aborted) setNamedFeaturesLoading(false)
+          })
+      }, 350)
+    }
+    loadViewportNames()
+    const removeListener = viewer.camera.changed.addEventListener(loadViewportNames)
+    return () => {
+      removeListener()
+      if (timer) clearTimeout(timer)
+      controller?.abort()
+    }
+  }, [viewer, namedFeaturesVisible])
 
   const handleMapClick = useCallback(
     (event: PointerEventLike) => {
@@ -392,6 +451,18 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
           {observationMarkers.map((marker) => (
             <Entity key={`observation-${marker.id}`} name={`${marker.label} · ${marker.verificationStatus}`} position={Cartesian3.fromDegrees(marker.longitudeDeg, marker.latitudeDeg, 0, MARS_ELLIPSOID)} point={{ pixelSize: 10, color: marker.category === 'danger' ? Color.RED : marker.category === 'shelter' ? Color.LIME : marker.category === 'water-ice' ? Color.CYAN : Color.GOLD, outlineColor: SPACE_COLOR, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: `${marker.category.toUpperCase()} · ${marker.verificationStatus.toUpperCase()}`, font: '9px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -18), disableDepthTestDistance: Number.POSITIVE_INFINITY }} />
           ))}
+          {explorationMarkers.map((marker) => (
+            <Entity key={`exploration-${marker.id}`} name={`${marker.label} · ${marker.category}`} position={Cartesian3.fromDegrees(marker.longitudeDeg, marker.latitudeDeg, 0, MARS_ELLIPSOID)} point={{ pixelSize: 13, color: Color.fromCssColorString(marker.color), outlineColor: SPACE_COLOR, outlineWidth: 3, disableDepthTestDistance: Number.POSITIVE_INFINITY }} label={{ text: marker.label.toUpperCase(), font: '10px IBM Plex Mono', fillColor: Color.WHITE, outlineColor: SPACE_COLOR, outlineWidth: 4, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -23), disableDepthTestDistance: Number.POSITIVE_INFINITY }} />
+          ))}
+          {namedFeaturesVisible ? namedFeatures.map((feature) => (
+            <Entity
+              key={`gazetteer-${feature.id}`}
+              name={`${feature.name}${feature.feature_type ? ` · ${feature.feature_type}` : ''} · USGS/IAU approved`}
+              position={Cartesian3.fromDegrees(feature.longitude_deg, planetocentricToGeodeticLatitude(feature.latitude_deg), 0, MARS_ELLIPSOID)}
+              point={{ pixelSize: 3, color: Color.fromCssColorString('#81d4ef').withAlpha(0.88), outlineColor: SPACE_COLOR, outlineWidth: 1, disableDepthTestDistance: Number.POSITIVE_INFINITY }}
+              label={{ text: feature.name, font: '10px IBM Plex Mono', fillColor: Color.fromCssColorString('#e5f7ff'), outlineColor: SPACE_COLOR, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(5, -5), disableDepthTestDistance: Number.POSITIVE_INFINITY }}
+            />
+          )) : null}
           <CameraFlyTo
             key={homeNonce}
             destination={HOME_DESTINATION}
@@ -428,6 +499,8 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
                   onToggleImagery={handleToggleImagery}
                   hazardAssessmentEnabled={hazardAssessmentEnabled}
                   onToggleHazardAssessment={handleToggleHazardAssessment}
+                  namedFeaturesVisible={namedFeaturesVisible}
+                  onToggleNamedFeatures={handleToggleNamedFeatures}
                 />
               ) : null}
               {hazardAssessmentEnabled ? (
@@ -494,6 +567,7 @@ export function MarsGlobe({ focusLocation = null, onSurfaceSelect, crewMarkers =
           {(MARS_EQUATORIAL_RADIUS_METERS / 1000).toFixed(0)} km). Drag to rotate · scroll to zoom ·
           right-drag to tilt. Imagery: {credits.length > 0 ? credits.join(' · ') : 'none enabled'}.
         </p>
+        {namedFeaturesVisible ? <p className="mt-1">Named features: {namedFeaturesLoading ? 'loading visible labels…' : namedFeaturesError ? `unavailable (${namedFeaturesError})` : `${namedFeatures.length} labels in this map view${namedFeaturesTotal > namedFeatures.length ? ` of ${namedFeaturesTotal} matching features` : ''}`} · USGS Gazetteer / IAU.</p> : null}
       </footer>
     </section>
   )
@@ -506,7 +580,7 @@ const STATUS_MESSAGES: Record<ImageryRuntimeStatus, string | null> = {
     'Some imagery tiles failed to load (network, CORS, or a tile-scheme mismatch). Available tiles are shown over a temporary Mars ellipsoid.',
   error:
     'Imagery could not be set up. Showing a temporary Mars ellipsoid globe, not a scientific mosaic.',
-  'ellipsoid-only': 'All imagery layers are off. The visible body is the Cesium Mars ellipsoid only.',
+  'ellipsoid-only': 'All surface imagery layers are off. The Mars ellipsoid is shown; independent map labels and pins may remain visible.',
 }
 
 function TerrainAssessmentPanel({

@@ -66,7 +66,7 @@ ARCHIVE_SOURCES: dict[str, dict[str, str]] = {
         "mission_id": "MRO",
         "instrument_id": "SHARAD",
         "product_type": "RDR",
-        "dataset_id": "MRO-M-SHARAD-5-RDR-V1.0",
+        "dataset_id": "MRO-M-SHARAD-4-RDR-V1.0",
         "data_kind": "Orbital subsurface radar sounding products",
         "caveat": "Track-based subsurface evidence; a return is not proof of accessible water ice.",
     },

@@ -16,7 +16,11 @@ Endpoints include `GET /api/v1/health`, Mars map/layer configuration, dataset me
 
 Database connectivity for mission telemetry requires `DATABASE_URL` and the documented PostGIS schema setup. Actor-token authentication is required for collaborative observation and resource writes. Live dataset ingestion beyond the explicit MOLA sample, validated hazard severity thresholds, and certified mission operations are not implemented in this foundation.
 
-Optional MOLA terrain processing uses Rasterio and NumPy. Install it separately with `python -m pip install -r requirements-geo.txt`; instructions and processing limits are in `docs/geospatial-processing.md`. Test dependencies are in `requirements-test.txt`.
+Optional MOLA terrain processing uses Rasterio, NumPy, and SciPy. Install it separately with `python -m pip install -r requirements-geo.txt`; the 4 ppd workflow and optional 128 ppd local tile workflow are documented in `docs/geospatial-processing.md` and `docs/mola-128ppd.md`. High-resolution tiles are downloaded only when explicitly requested.
+
+The map's scale-aware official Mars feature labels use the cached USGS/IAU nomenclature center-point catalog. Download it once with `python -m app.services.planetary_feature_catalog --download`; source notes and the NASA non-endorsement disclaimer are in `docs/planetary-names.md`.
+
+Separate cited habitability and biosignature evidence maps are available from `/api/v1/science/astrobiology/maps`. The habitability score remains unscored until validated factors and a reviewed scoring method exist; see `docs/astrobiology-maps.md`.
 
 Hazard assessment scope, API parameters, uncertainty behavior, and the optional evidence-required policy format are documented in `docs/hazard-analysis.md`.
 

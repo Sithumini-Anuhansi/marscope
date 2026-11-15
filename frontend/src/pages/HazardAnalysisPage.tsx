@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ArrowUpRight, LoaderCircle, RefreshCw } from 'lucide-react'
+import { ScienceDemoPanel } from '../components/common/ScienceDemoPanel'
 import { getHazardAssessmentForRegion, getHazardServiceStatus } from '../services/hazardService'
 import type { HazardRegionResponse, HazardServiceStatus } from '../types/hazard'
 
@@ -123,6 +124,8 @@ export function HazardAnalysisPage() {
           <p className="mt-3 text-[10px] text-muted">Processing run: <span className="font-mono text-sand">{status?.processing_run ?? 'None detected'}</span></p>
         </section>
       </section>
+
+      <ScienceDemoPanel sections={['environmental-hazards', 'atmosphere', 'terrain']} title="Hazard and atmosphere display examples" />
 
       {result ? (
         <section className="rounded-2xl border border-line bg-panel/80 p-4 md:p-5" aria-live="polite">

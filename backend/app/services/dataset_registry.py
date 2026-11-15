@@ -21,7 +21,7 @@ DATASETS = [
         "measurement_units": "m relative to the MOLA areoid",
         "nominal_resolution_km": 14.817845349,
         "feature_usage": ["where-am-i", "nearby", "hazard-analysis", "risk-assessment", "route-planning", "mars-explorer"],
-        "caveat": "Historical global grid; some empty bins may be interpolated; not rover-scale.",
+        "caveat": "Historical global 4 ppd grid; empty bins may be interpolated. An optional 128 ppd tile workflow is documented, though still too coarse for rover/EVA safety.",
     },
     {
         "id": "themis",
@@ -68,7 +68,7 @@ DATASETS = [
     {
         "id": "mcd",
         "name": "Mars Climate Database",
-        "product_id": "MCD-6.1",
+        "product_id": "MCD-6.2",
         "product_name": "Mars climate model fields and climatologies",
         "source": "LMD / Open University / Oxford / ESA-supported Mars Climate Database",
         "source_url": "https://www-mars.lmd.jussieu.fr/",
@@ -86,12 +86,12 @@ DATASETS = [
         "product_name": "Perseverance site-local environmental measurements",
         "source": "NASA PDS Atmospheres Node",
         "source_url": "https://pds.nasa.gov/",
-        "status": _PENDING,
+        "status": "local-index-ingestion-supported",
         "downloaded": False,
         "validated": False,
         "measurement_units": "field-dependent; retain calibrated/raw status and units from product labels",
         "feature_usage": ["safety", "risk-assessment", "where-am-i"],
-        "caveat": "Historical Perseverance-site observations; cannot be presented as current or globally representative conditions.",
+        "caveat": "Official calibrated ATS archive index is downloaded and schema-validated. It lists product files but is not the measurements themselves; all MEDA data are historical and site-local to Jezero.",
     },
     {
         "id": "marci",

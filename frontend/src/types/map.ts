@@ -1,6 +1,7 @@
 export type ImageryLayerId = 'viking-mdim' | 'mola-shade' | 'ctx-mosaic'
 
 export type OperationalLayerId =
+  | 'named-features'
   | 'terrain-elevation'
   | 'temperature'
   | 'wind'
